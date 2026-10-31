@@ -8,6 +8,9 @@
 <link rel="icon" href="icon.svg" type="image/svg+xml">
 <link rel="apple-touch-icon" href="icon.svg">
 <meta name="theme-color" content="#d9480f">
+<meta property="og:title" content="АвтоРешение">
+<meta property="og:description" content="Решения для вашего авто с YouTube">
+<meta property="og:image" content="cover.jpg">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=PT+Sans:wght@400;700&family=PT+Sans+Narrow:wght@700&family=PT+Mono&display=swap">
@@ -70,10 +73,16 @@ button:disabled{opacity:.55;cursor:wait}
 details summary{cursor:pointer;font-weight:700}
 .chip.btn{border:0;cursor:pointer;font:inherit;color:var(--fg)}
 .chip.btn:hover{background:var(--line)}
+#splash{position:fixed;inset:0;z-index:50;background:#0f4fb8 url(cover.jpg) center bottom/100% auto no-repeat;cursor:pointer;transition:opacity .5s}
+@media (min-aspect-ratio:1080/1918){#splash{background-size:auto 100%}}
+#splash.hide{opacity:0;pointer-events:none}
+#splash button{position:absolute;top:calc(16px + env(safe-area-inset-top));right:calc(16px + env(safe-area-inset-right));background:rgba(0,0,0,.45);color:#fff;font-size:.95rem;padding:9px 18px;border-radius:999px}
+@media (prefers-reduced-motion:reduce){#splash{transition:none}}
 .car{font-family:var(--mono);font-size:.9rem;color:var(--ok)}
 </style>
 </head>
 <body>
+<div id="splash" role="dialog" aria-label="АвтоРешение"><button type="button" id="start">Пропустить</button></div>
 <div class="wrap">
   <header>
     <h1>Авто<span>Решение</span></h1>
@@ -189,6 +198,9 @@ $("histlist").addEventListener("click", e => {
   $("form").requestSubmit();
 });
 renderHistory();
+// Обложка: показываем при каждом открытии, скрываем по нажатию или через 3 секунды
+(function(){ const sp = $("splash"); const hide = () => { sp.classList.add("hide"); setTimeout(() => sp.hidden = true, 600); };
+  sp.addEventListener("click", hide); setTimeout(hide, 3000); })();
 if ("serviceWorker" in navigator && location.protocol.startsWith("http")) navigator.serviceWorker.register("sw.js").catch(() => {});
 
 function setStatus(t, err){ $("status").textContent = t; $("status").className = "status" + (err ? " err" : ""); }
