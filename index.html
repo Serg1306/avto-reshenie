@@ -43,6 +43,8 @@ input:focus,textarea:focus,select:focus,button:focus-visible,a:focus-visible{out
 textarea{min-height:84px;resize:vertical}
 .grid{display:grid;gap:14px}
 .row{display:grid;gap:12px;grid-template-columns:1fr 1fr 110px}
+.row2{display:grid;gap:12px;grid-template-columns:1fr 1fr}
+@media (max-width:560px){.row2{grid-template-columns:1fr}}
 .vinrow{display:grid;gap:10px;grid-template-columns:1fr auto;align-items:end}
 @media (max-width:560px){.row{grid-template-columns:1fr 1fr}.row>div:last-child{grid-column:1/-1}}
 .or{display:flex;align-items:center;gap:10px;color:var(--muted);font-size:.85rem}
@@ -92,6 +94,21 @@ details summary{cursor:pointer;font-weight:700}
 #splash.hide{opacity:0;pointer-events:none}
 #splash button{position:absolute;top:calc(16px + env(safe-area-inset-top));right:calc(16px + env(safe-area-inset-right));background:rgba(0,0,0,.45);color:#fff;font-size:.95rem;padding:9px 18px;border-radius:999px}
 @media (prefers-reduced-motion:reduce){#splash{transition:none}}
+.small{padding:7px 12px;font-size:.9rem}
+.chip .x{margin-left:6px;color:var(--muted);cursor:pointer;border:0;background:none;font:inherit;padding:0 2px}
+.chip.sel{outline:2px solid var(--accent)}
+.codeinfo{font-size:.9rem;display:grid;gap:4px}
+.codeinfo b{font-family:var(--mono);font-weight:400;color:var(--accent);margin-right:6px}
+.thumbs{display:flex;gap:8px;flex-wrap:wrap;margin-top:6px}
+.thumbs img{width:72px;height:72px;object-fit:cover;border-radius:6px;border:1px solid var(--line)}
+input[type=file]{padding:8px;background:var(--bg)}
+.saved{border:1px solid var(--line);border-radius:8px;padding:10px 12px;cursor:pointer;text-align:left;background:var(--panel);color:var(--fg);font:inherit}
+.saved:hover{border-color:var(--accent)}
+.saved small{display:block;color:var(--muted);font-family:var(--mono);font-size:.8rem}
+.estrow{display:grid;grid-template-columns:1.4fr 1fr 1fr;gap:8px;padding:8px 0;border-bottom:1px solid var(--line);font-size:.92rem}
+.estrow>div{min-width:0}
+.estrow .c{grid-column:1/-1;color:var(--muted);font-size:.88rem}
+.estrow.h{font-weight:700;font-size:.8rem;text-transform:uppercase;letter-spacing:.05em;color:var(--muted)}
 .car{font-family:var(--mono);font-size:.9rem;color:var(--ok)}
 </style>
 </head>
@@ -104,6 +121,9 @@ details summary{cursor:pointer;font-weight:700}
   </header>
 
   <form class="panel grid" id="form" autocomplete="off">
+    <div id="garage"><label>Мой гараж</label>
+      <div class="chips" id="cars"></div>
+      <span class="hint" id="nocars">Сохраните машину, чтобы не вводить её каждый раз.</span></div>
     <div class="vinrow">
       <div><label for="vin">VIN-код (17 символов)</label>
         <input id="vin" maxlength="17" placeholder="например, JTDBR32E720123456"></div>
@@ -116,9 +136,24 @@ details summary{cursor:pointer;font-weight:700}
       <div><label for="model">Модель</label><input id="model" placeholder="Camry"></div>
       <div><label for="year">Год</label><input id="year" inputmode="numeric" maxlength="4" placeholder="2012"></div>
     </div>
+    <div><button type="button" class="ghost small" id="savecar">+ Сохранить машину в гараж</button></div>
     <div><label for="problem">Что случилось</label>
       <textarea id="problem" placeholder="Например: не заводится на холодную, стучит при запуске, горит check engine"></textarea></div>
-    <div class="row" style="grid-template-columns:1fr 1fr">
+    <div class="row2">
+      <div><label for="sound">Какой звук</label>
+        <select id="sound"><option value="">Нет постороннего звука</option><option>стук</option><option>скрип</option><option>свист</option><option>гул</option><option>щелчки</option><option>шипение</option><option>хруст</option><option>вой</option></select></div>
+      <div><label for="when">Когда слышно</label>
+        <select id="when"><option value="">Всегда</option><option>при запуске двигателя</option><option>на холодную</option><option>на холостых оборотах</option><option>при разгоне</option><option>при торможении</option><option>на кочках</option><option>при повороте руля</option><option>при переключении передач</option><option>при включении кондиционера</option></select></div>
+    </div>
+    <div class="row2">
+      <div><label for="codes">Коды ошибок, если есть</label><input id="codes" placeholder="P0300, P0171"></div>
+      <div><label for="city">Город (для цен)</label><input id="city" placeholder="Москва"></div>
+    </div>
+    <div class="codeinfo" id="codeinfo" hidden></div>
+    <div><label for="photos">Фото проблемы, до 3 (потёк, лампа на панели, деталь)</label>
+      <input type="file" id="photos" accept="image/*" multiple>
+      <div class="thumbs" id="photoprev"></div></div>
+    <div class="row2">
       <div><label for="lang">Язык видео</label>
         <select id="lang"><option value="both">Русские + английские</option><option value="ru">Только русские</option><option value="en">Только английские</option></select></div>
       <div><label for="order">Сортировка</label>
@@ -138,11 +173,22 @@ details summary{cursor:pointer;font-weight:700}
     </details>
   </form>
 
+  <section class="panel" id="saved" hidden><h2>Сохранённые сводки</h2><div class="grid" id="savedlist"></div></section>
   <section class="panel" id="history" hidden><h2>Недавние поиски</h2><div class="chips" id="histlist"></div></section>
   <section class="panel" id="ai" hidden></section>
   <section class="panel" id="web" hidden></section>
   <section class="panel" id="summary" hidden></section>
   <section class="videos" id="videos"></section>
+  <section class="panel grid" id="estimate">
+    <h2>Проверить счёт сервиса</h2>
+    <p class="hint" style="margin:0">Вставьте смету или сфотографируйте её. ИИ сравнит каждую позицию с типичными ценами для вашей машины и города и подскажет, что спросить у мастера. Машину и город возьмёт из формы выше.</p>
+    <div><label for="esttext">Смета или счёт</label>
+      <textarea id="esttext" placeholder="Например: Замена катушки зажигания — 4 500 ₽; Катушка (оригинал) — 9 800 ₽; Диагностика — 2 000 ₽"></textarea></div>
+    <div><label for="estphotos">Фото сметы, до 3</label><input type="file" id="estphotos" accept="image/*" multiple>
+      <div class="thumbs" id="estprev"></div></div>
+    <div class="actions"><button type="button" class="primary" id="estgo">Проверить цены</button><span class="status" id="eststatus"></span></div>
+    <div id="estout"></div>
+  </section>
 </div>
 
 <script>
@@ -154,6 +200,114 @@ const DEFAULT_AI_URL = "";
 $("aiurl").value = store.get("ai_url") || DEFAULT_AI_URL;
 $("aiurl").addEventListener("change", e => store.set("ai_url", e.target.value.trim()));
 let lastVideos = [];
+const getJSON = (k, d) => { try { return JSON.parse(store.get(k) || "") ?? d; } catch(e) { return d; } };
+const setJSON = (k, v) => store.set(k, JSON.stringify(v));
+
+// Частые коды ошибок OBD-II (общие для всех марок). Остальные расшифрует ИИ.
+const OBD = {
+  P0010:"Цепь привода фазорегулятора распредвала, ряд 1", P0011:"Распредвал: слишком раннее положение фаз, ряд 1",
+  P0016:"Рассогласование датчиков коленвала и распредвала, ряд 1", P0100:"Неисправность цепи датчика расхода воздуха (ДМРВ)",
+  P0101:"ДМРВ: показания вне допустимого диапазона", P0102:"ДМРВ: низкий уровень сигнала", P0110:"Цепь датчика температуры впускного воздуха",
+  P0113:"Датчик температуры впускного воздуха: высокий уровень сигнала", P0115:"Цепь датчика температуры охлаждающей жидкости",
+  P0118:"Датчик температуры охлаждающей жидкости: высокий уровень сигнала", P0120:"Цепь датчика положения дроссельной заслонки",
+  P0128:"Двигатель не прогревается до рабочей температуры (часто термостат)", P0130:"Цепь первого кислородного датчика (лямбда-зонд), ряд 1",
+  P0133:"Медленный отклик первого лямбда-зонда, ряд 1", P0171:"Слишком бедная смесь, ряд 1", P0172:"Слишком богатая смесь, ряд 1",
+  P0174:"Слишком бедная смесь, ряд 2", P0175:"Слишком богатая смесь, ряд 2", P0300:"Случайные или множественные пропуски зажигания",
+  P0301:"Пропуски зажигания в 1-м цилиндре", P0302:"Пропуски зажигания во 2-м цилиндре", P0303:"Пропуски зажигания в 3-м цилиндре",
+  P0304:"Пропуски зажигания в 4-м цилиндре", P0325:"Цепь датчика детонации", P0335:"Цепь датчика положения коленвала",
+  P0340:"Цепь датчика положения распредвала", P0401:"Недостаточный поток системы рециркуляции газов (EGR)",
+  P0420:"Эффективность катализатора ниже нормы, ряд 1", P0430:"Эффективность катализатора ниже нормы, ряд 2",
+  P0440:"Неисправность системы улавливания паров топлива (EVAP)", P0442:"Небольшая утечка в системе EVAP (часто крышка бака)",
+  P0455:"Большая утечка в системе EVAP", P0500:"Датчик скорости автомобиля", P0505:"Система регулирования холостого хода",
+  P0507:"Обороты холостого хода выше нормы", P0562:"Низкое напряжение бортовой сети", P0606:"Неисправность процессора блока управления двигателем",
+  P0700:"Неисправность системы управления коробкой передач"
+};
+const CODE_GROUPS = {P:"двигатель или коробка передач", B:"кузов (подушки, климат, электрика салона)", C:"шасси (ABS, подвеска, рулевое)", U:"связь между блоками управления"};
+function parseCodes(){ return [...new Set(($("codes").value.toUpperCase().match(/\b[PBCU][0-9A-F]{4}\b/g) || []))].slice(0, 10); }
+function renderCodes(){
+  const codes = parseCodes(), box = $("codeinfo");
+  box.hidden = !codes.length;
+  box.innerHTML = codes.map(c => `<div><b>${c}</b>${esc(OBD[c] || "Группа: " + CODE_GROUPS[c[0]] + ". Точная расшифровка для вашей машины будет в ИИ-сводке.")}</div>`).join("");
+}
+$("codes").addEventListener("input", renderCodes);
+// Проблема для поиска: описание + коды ошибок
+function soundText(){ const snd = $("sound").value, w = $("when").value; return snd ? `${snd}${w ? " " + w : ""}` : ""; }
+function fullProblem(){ return [$("problem").value.trim(), soundText(), ...parseCodes()].filter(Boolean).join(" "); }
+
+// Фото: уменьшаем до 1280 px и сжимаем в JPEG, чтобы быстро отправлять
+function shrink(file){
+  return new Promise((resolve, reject) => {
+    const img = new Image(), url = URL.createObjectURL(file);
+    img.onload = () => {
+      const k = Math.min(1, 1280 / Math.max(img.width, img.height));
+      const c = document.createElement("canvas"); c.width = Math.round(img.width * k); c.height = Math.round(img.height * k);
+      c.getContext("2d").drawImage(img, 0, 0, c.width, c.height); URL.revokeObjectURL(url);
+      resolve(c.toDataURL("image/jpeg", 0.82));
+    };
+    img.onerror = () => { URL.revokeObjectURL(url); reject(new Error("не удалось открыть фото")); };
+    img.src = url;
+  });
+}
+const photoCache = {photos: [], estphotos: []};
+function bindPhotos(inputId, prevId){
+  $(inputId).addEventListener("change", async () => {
+    const files = [...$(inputId).files].slice(0, 3);
+    photoCache[inputId] = [];
+    for (const f of files) { try { photoCache[inputId].push(await shrink(f)); } catch(e) {} }
+    $(prevId).innerHTML = photoCache[inputId].map(u => `<img alt="" src="${u}">`).join("");
+  });
+}
+bindPhotos("photos", "photoprev"); bindPhotos("estphotos", "estprev");
+const toImages = list => list.map(u => ({media_type: "image/jpeg", data: u.split(",")[1]}));
+
+// Мой гараж: сохранённые машины (только в этом браузере)
+const carKey = () => [$("make").value, $("model").value, $("year").value].map(s => s.trim().toLowerCase()).join("|");
+function renderGarage(){
+  const cars = getJSON("cars", []), cur = carKey();
+  $("nocars").hidden = cars.length > 0;
+  $("cars").innerHTML = cars.map((c,i) => `<span class="chip btn${[c.make,c.model,c.year].map(s=>(s||"").toLowerCase()).join("|") === cur ? " sel" : ""}" role="button" tabindex="0" data-car="${i}">${esc([c.make,c.model,c.year].filter(Boolean).join(" "))}<button type="button" class="x" data-del="${i}" aria-label="Удалить">×</button></span>`).join("");
+  renderSaved();
+}
+$("savecar").addEventListener("click", () => {
+  const c = {make: $("make").value.trim(), model: $("model").value.trim(), year: $("year").value.trim()};
+  if (!c.make || !c.model) { setStatus("Укажите хотя бы марку и модель.", true); return; }
+  const cars = getJSON("cars", []).filter(x => [x.make,x.model,x.year].join("|").toLowerCase() !== [c.make,c.model,c.year].join("|").toLowerCase());
+  setJSON("cars", [c, ...cars].slice(0, 10)); renderGarage(); setStatus("Машина сохранена в гараж.");
+});
+$("cars").addEventListener("click", e => {
+  const del = e.target.closest("[data-del]");
+  if (del) { const cars = getJSON("cars", []); cars.splice(+del.dataset.del, 1); setJSON("cars", cars); renderGarage(); return; }
+  const b = e.target.closest("[data-car]"); if (!b) return;
+  const c = getJSON("cars", [])[+b.dataset.car]; $("make").value = c.make; $("model").value = c.model; $("year").value = c.year || "";
+  renderGarage();
+});
+// При вводе машины только подсвечиваем совпадающую в гараже, не перерисовывая кнопки
+function markGarage(){
+  const cars = getJSON("cars", []), cur = carKey();
+  $("cars").querySelectorAll("[data-car]").forEach(el => { const c = cars[+el.dataset.car];
+    el.classList.toggle("sel", !!c && [c.make,c.model,c.year].map(s=>(s||"").toLowerCase()).join("|") === cur); });
+  renderSaved();
+}
+["make","model","year"].forEach(id => $(id).addEventListener("input", markGarage));
+
+// Сохранённые сводки по текущей машине
+function saveSummary(d){
+  const list = getJSON("summaries", []);
+  list.unshift({car: carKey(), title: [$("make").value,$("model").value,$("year").value].filter(Boolean).join(" "), problem: fullProblem(), date: new Date().toISOString().slice(0,10), d});
+  setJSON("summaries", list.slice(0, 30)); renderSaved();
+}
+function renderSaved(){
+  const cur = carKey(), list = getJSON("summaries", []).map((x,i) => ({...x, i})).filter(x => x.car === cur);
+  $("saved").hidden = !list.length;
+  $("savedlist").innerHTML = list.map(x => `<button type="button" class="saved" data-s="${x.i}"><small>${esc(x.date)} · ${esc(x.title)}</small>${esc(x.problem)}</button>`).join("");
+}
+$("savedlist").addEventListener("click", e => {
+  const b = e.target.closest("[data-s]"); if (!b) return;
+  const x = getJSON("summaries", [])[+b.dataset.s]; if (!x) return;
+  const a = $("ai"); a.hidden = false;
+  a.innerHTML = `<h2>ИИ-сводка от ${esc(x.date)}</h2><p class="hint">${esc(x.title)}: ${esc(x.problem)}</p>${renderAi(x.d)}`;
+  a.scrollIntoView({behavior: "smooth"});
+});
 $("apikey").addEventListener("change", e => store.set("yt_key", e.target.value.trim()));
 
 // Частые симптомы: русский → английский, чтобы искать и в англоязычном YouTube
@@ -178,7 +332,7 @@ function toEnglish(text){
 function car(){ return [$("make").value, $("model").value, $("year").value].map(s=>s.trim()).filter(Boolean).join(" "); }
 
 function buildQueries(){
-  const c = car(), p = $("problem").value.trim(), lang = $("lang").value, q = [];
+  const c = car(), p = fullProblem(), lang = $("lang").value, q = [];
   if (lang !== "en") q.push({lang:"ru", text:`${c} ${p}`.trim()});
   if (lang !== "ru") { const en = toEnglish(p); q.push({lang:"en", text:`${c} ${en || p} fix`.trim()}); }
   return q;
@@ -205,21 +359,21 @@ const cap = s => s ? s.charAt(0) + s.slice(1).toLowerCase() : s;
 // История последних 8 поисков (только в этом браузере)
 function getHistory(){ try { return JSON.parse(store.get("history") || "[]"); } catch(e){ return []; } }
 function saveHistory(){
-  const item = {make:$("make").value.trim(), model:$("model").value.trim(), year:$("year").value.trim(), problem:$("problem").value.trim()};
+  const item = {make:$("make").value.trim(), model:$("model").value.trim(), year:$("year").value.trim(), problem:$("problem").value.trim(), codes:$("codes").value.trim()};
   const key = JSON.stringify(item);
   const list = [item, ...getHistory().filter(h => JSON.stringify(h) !== key)].slice(0, 8);
   store.set("history", JSON.stringify(list)); renderHistory();
 }
 function renderHistory(){
   const list = getHistory(); $("history").hidden = !list.length;
-  $("histlist").innerHTML = list.map((h,i) => `<button type="button" class="chip btn" data-i="${i}">${esc([h.make,h.model,h.year].filter(Boolean).join(" "))}: ${esc(h.problem.length > 40 ? h.problem.slice(0,40) + "…" : h.problem)}</button>`).join("");
+  $("histlist").innerHTML = list.map((h,i) => `<button type="button" class="chip btn" data-i="${i}">${esc([h.make,h.model,h.year].filter(Boolean).join(" "))}: ${esc((p => p.length > 40 ? p.slice(0,40) + "…" : p)([h.problem, h.codes].filter(Boolean).join(" ")))}</button>`).join("");
 }
 $("histlist").addEventListener("click", e => {
   const b = e.target.closest("[data-i]"); if (!b) return;
-  const h = getHistory()[+b.dataset.i]; ["make","model","year","problem"].forEach(k => $(k).value = h[k] || "");
+  const h = getHistory()[+b.dataset.i]; ["make","model","year","problem","codes"].forEach(k => $(k).value = h[k] || ""); renderCodes(); renderGarage();
   $("form").requestSubmit();
 });
-renderHistory();
+renderHistory(); renderGarage();
 // Обложка: показываем при каждом открытии, скрываем по нажатию или через 3 секунды
 (function(){ const sp = $("splash"); const hide = () => { sp.classList.add("hide"); setTimeout(() => sp.hidden = true, 600); };
   sp.addEventListener("click", hide); setTimeout(hide, 3000); })();
@@ -229,7 +383,7 @@ function setStatus(t, err){ $("status").textContent = t; $("status").className =
 
 $("form").addEventListener("submit", async e => {
   e.preventDefault();
-  if (!car() || !$("problem").value.trim()) { setStatus("Укажите машину (или VIN) и опишите проблему.", true); return; }
+  if (!car() || !fullProblem()) { setStatus("Укажите машину (или VIN) и опишите проблему или код ошибки.", true); return; }
   const key = $("apikey").value.trim(); store.set("yt_key", key);
   saveHistory();
   const queries = buildQueries();
@@ -270,7 +424,7 @@ async function api(u){
 
 // Оценка полезности: совпадение с машиной и симптомами в названии + популярность + лайки
 function rank(vids){
-  const words = (car() + " " + $("problem").value + " " + toEnglish($("problem").value)).toLowerCase().split(/[^\p{L}\p{N}]+/u).filter(w => w.length > 2);
+  const words = (car() + " " + fullProblem() + " " + toEnglish($("problem").value)).toLowerCase().split(/[^\p{L}\p{N}]+/u).filter(w => w.length > 2);
   vids.forEach(v => {
     const title = (v.title + " " + v.description).toLowerCase();
     const hits = words.filter(w => title.includes(w)).length;
@@ -304,15 +458,15 @@ function renderAiPrompt(){
   const a = $("ai"); a.hidden = false;
   const url = $("aiurl").value.trim();
   a.innerHTML = `<h2>ИИ-сводка</h2>
-    <p class="hint">ИИ прочитает форумы, бортжурналы, сервисные бюллетени и найденные видео и коротко ответит: вероятные причины, что проверить и примерная цена ремонта. Занимает 20–60 секунд.</p>
+    <p class="hint">ИИ прочитает форумы, бортжурналы, сервисные бюллетени, найденные видео и посмотрит ваши фото и коротко ответит: вероятные причины, что проверить и примерная цена ремонта. Занимает 20–60 секунд.</p>
     ${url ? `<button type="button" class="primary" id="aigo">Сделать ИИ-сводку</button>` : `<a class="primary" style="display:inline-block;text-decoration:none;padding:11px 18px;border-radius:6px;font-weight:700" target="_blank" rel="noopener" href="${claudeLink()}">Спросить ИИ в Claude ↗</a>
       <p class="hint">Откроется Claude с готовым вопросом о вашей поломке. Нужен вход в аккаунт Claude, отдельный сервер для этого не нужен.</p>`}
     <div id="aiout"></div>`;
   if (url) $("aigo").addEventListener("click", runAi);
 }
 function claudeLink(){
-  const c = car(), p = $("problem").value.trim();
-  const q = `Ты опытный автомеханик. Машина: ${c}. Проблема: ${p}. Поищи в интернете, что пишут владельцы этой модели на форумах (drive2, drom, reddit) и в сервисных бюллетенях. Ответь по-русски: насколько срочно ехать в сервис, 2-5 вероятных причин от самой частой (как проверить каждую и примерная цена ремонта в рублях), что можно проверить самому, и ссылки на источники.`;
+  const c = car(), p = fullProblem(), city = $("city").value.trim();
+  const q = `Ты опытный автомеханик. Машина: ${c}.${city ? " Город: " + city + "." : ""} Проблема: ${p}. Поищи в интернете, что пишут владельцы этой модели на форумах (drive2, drom, reddit) и в сервисных бюллетенях. Ответь по-русски: насколько срочно ехать в сервис, 2-5 вероятных причин от самой частой (как проверить каждую и примерная цена ремонта в рублях), что можно проверить самому, и ссылки на источники.`;
   return "https://claude.ai/new?q=" + encodeURIComponent(q);
 }
 async function runAi(){
@@ -321,10 +475,11 @@ async function runAi(){
   btn.textContent = "Изучаю интернет…"; out.innerHTML = "";
   try {
     const r = await fetch($("aiurl").value.trim(), {method: "POST", headers: {"Content-Type": "application/json"},
-      body: JSON.stringify({make: $("make").value, model: $("model").value, year: $("year").value, problem: $("problem").value, videos: lastVideos})});
+      body: JSON.stringify({make: $("make").value, model: $("model").value, year: $("year").value, city: $("city").value,
+        problem: [$("problem").value.trim(), soundText()].filter(Boolean).join(", "), codes: parseCodes(), images: toImages(photoCache.photos), videos: lastVideos})});
     const d = await r.json().catch(() => ({error: "сервер вернул непонятный ответ"}));
     if (!r.ok || d.error) throw new Error(d.error || ("код " + r.status));
-    out.innerHTML = renderAi(d); btn.hidden = true;
+    out.innerHTML = renderAi(d); btn.hidden = true; saveSummary(d);
   } catch(e) {
     out.innerHTML = `<p class="status err">Не получилось: ${esc(e.message)}. Попробуйте ещё раз.</p>`;
     btn.disabled = false; btn.textContent = "Сделать ИИ-сводку";
@@ -336,6 +491,8 @@ function renderAi(d){
   const list = a => Array.isArray(a) ? a : [];
   return `${urg ? `<span class="ai-urg ${cls}">${esc(urg)}</span>` : ""}
     <p>${esc(d.summary)}</p>
+    ${list(d.codes).length ? `<label>Коды ошибок</label><div class="codeinfo" style="margin-bottom:10px">${list(d.codes).map(c => `<div><b>${esc(c.code)}</b>${esc(c.meaning)}</div>`).join("")}</div>` : ""}
+    ${d.photo ? `<p><b>На фото:</b> ${esc(d.photo)}</p>` : ""}
     ${list(d.causes).length ? `<label>Вероятные причины</label><div class="causes">${list(d.causes).map(c => `<div class="cause">
       <h3>${esc(c.cause)}<span class="lk">вероятность: ${esc(c.likelihood)}</span></h3>
       ${c.check ? `<p><b>Как проверить:</b> ${esc(c.check)}</p>` : ""}${c.cost ? `<p><b>Стоимость:</b> ${esc(c.cost)}</p>` : ""}</div>`).join("")}</div>` : ""}
@@ -345,9 +502,41 @@ function renderAi(d){
     <p class="hint">Сводка составлена ИИ по открытым источникам и может ошибаться. Перед ремонтом проверьте диагноз у мастера.</p>`;
 }
 
+// Проверка счёта автосервиса
+$("estgo").addEventListener("click", async () => {
+  const text = $("esttext").value.trim(), photos = photoCache.estphotos, url = $("aiurl").value.trim();
+  const st = $("eststatus"); st.className = "status";
+  if (!text && !photos.length) { st.textContent = "Вставьте текст сметы или приложите фото."; st.className = "status err"; return; }
+  if (!url) {
+    if (!text) { st.textContent = "Без сервера ИИ проверка работает только по тексту сметы: вставьте его."; st.className = "status err"; return; }
+    const q = `Ты независимый эксперт по стоимости автосервиса. Машина: ${car() || "не указана"}.${$("city").value.trim() ? " Город: " + $("city").value.trim() + "." : ""} Вот смета автосервиса:\n${text}\n\nНайди в интернете типичные цены на эти работы и запчасти для этой машины и города. По каждой позиции скажи: в норме, завышено или лишнее. Дай справедливую итоговую сумму в рублях и что спросить у мастера перед оплатой. Ответь по-русски, со ссылками на источники.`;
+    window.open("https://claude.ai/new?q=" + encodeURIComponent(q), "_blank", "noopener"); return;
+  }
+  const btn = $("estgo"); btn.disabled = true; st.textContent = "Сравниваю цены… это 20–60 секунд"; $("estout").innerHTML = "";
+  try {
+    const r = await fetch(url, {method: "POST", headers: {"Content-Type": "application/json"},
+      body: JSON.stringify({mode: "estimate", make: $("make").value, model: $("model").value, year: $("year").value, city: $("city").value,
+        problem: $("problem").value, estimate: text, images: toImages(photos)})});
+    const d = await r.json().catch(() => ({error: "сервер вернул непонятный ответ"}));
+    if (!r.ok || d.error) throw new Error(d.error || ("код " + r.status));
+    $("estout").innerHTML = renderEstimate(d); st.textContent = "";
+  } catch(e) { st.textContent = "Не получилось: " + e.message; st.className = "status err"; }
+  finally { btn.disabled = false; }
+});
+function renderEstimate(d){
+  const list = a => Array.isArray(a) ? a : [];
+  const v = d.verdict || "", cls = /сильно|подозрительно/i.test(v) ? "bad" : /норме/i.test(v) ? "ok" : "";
+  return `${v ? `<span class="ai-urg ${cls}">${esc(v)}</span>` : ""}<p>${esc(d.summary)}</p>
+    ${d.quoted_total || d.fair_total ? `<p>${d.quoted_total ? `<b>По смете:</b> ${esc(d.quoted_total)}. ` : ""}${d.fair_total ? `<b>Справедливо:</b> ${esc(d.fair_total)}.` : ""}</p>` : ""}
+    ${list(d.items).length ? `<div class="estrow h"><div>Позиция</div><div>В смете</div><div>Обычно</div></div>${list(d.items).map(x => `<div class="estrow"><div>${esc(x.name)}</div><div>${esc(x.quoted)}</div><div>${esc(x.typical)}</div>${x.comment ? `<div class="c">${esc(x.comment)}</div>` : ""}</div>`).join("")}` : ""}
+    ${list(d.questions).length ? `<label style="margin-top:12px">Что спросить у мастера</label><ul>${list(d.questions).map(q => `<li>${esc(q)}</li>`).join("")}</ul>` : ""}
+    ${list(d.sources).length ? `<label style="margin-top:10px">Источники</label><ul>${list(d.sources).filter(x => /^https?:/.test(x.url||"")).map(x => `<li><a target="_blank" rel="noopener" href="${esc(x.url)}">${esc(x.title || x.url)}</a></li>`).join("")}</ul>` : ""}
+    <p class="hint">Оценка ИИ по открытым источникам. Реальные цены зависят от сервиса и качества запчастей.</p>`;
+}
+
 // Поиск по всему интернету: готовые запросы к поисковикам и автофорумам
 function renderWeb(){
-  const c = car(), p = $("problem").value.trim(), ru = `${c} ${p}`, en = `${c} ${toEnglish(p) || p}`;
+  const c = car(), p = fullProblem(), ru = `${c} ${p}`, en = `${c} ${toEnglish(p) || p}`;
   const g = q => "https://www.google.com/search?q=" + encodeURIComponent(q);
   const SRC = [
     ["Google", "весь интернет", g(ru)],
