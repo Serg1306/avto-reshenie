@@ -305,9 +305,15 @@ function renderAiPrompt(){
   const url = $("aiurl").value.trim();
   a.innerHTML = `<h2>ИИ-сводка</h2>
     <p class="hint">ИИ прочитает форумы, бортжурналы, сервисные бюллетени и найденные видео и коротко ответит: вероятные причины, что проверить и примерная цена ремонта. Занимает 20–60 секунд.</p>
-    ${url ? `<button type="button" class="primary" id="aigo">Сделать ИИ-сводку</button>` : `<p class="hint">Сервер сводки ещё не подключён: укажите его адрес в настройках.</p>`}
+    ${url ? `<button type="button" class="primary" id="aigo">Сделать ИИ-сводку</button>` : `<a class="primary" style="display:inline-block;text-decoration:none;padding:11px 18px;border-radius:6px;font-weight:700" target="_blank" rel="noopener" href="${claudeLink()}">Спросить ИИ в Claude ↗</a>
+      <p class="hint">Откроется Claude с готовым вопросом о вашей поломке. Нужен вход в аккаунт Claude, отдельный сервер для этого не нужен.</p>`}
     <div id="aiout"></div>`;
   if (url) $("aigo").addEventListener("click", runAi);
+}
+function claudeLink(){
+  const c = car(), p = $("problem").value.trim();
+  const q = `Ты опытный автомеханик. Машина: ${c}. Проблема: ${p}. Поищи в интернете, что пишут владельцы этой модели на форумах (drive2, drom, reddit) и в сервисных бюллетенях. Ответь по-русски: насколько срочно ехать в сервис, 2-5 вероятных причин от самой частой (как проверить каждую и примерная цена ремонта в рублях), что можно проверить самому, и ссылки на источники.`;
+  return "https://claude.ai/new?q=" + encodeURIComponent(q);
 }
 async function runAi(){
   const btn = $("aigo"), out = $("aiout"); btn.disabled = true;
