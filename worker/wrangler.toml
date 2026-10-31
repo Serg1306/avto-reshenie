@@ -9,6 +9,13 @@ ALLOWED_ORIGINS = "https://serg1306.github.io"
 FREE_PER_DEVICE = "3"
 LIMIT_PER_IP = "15"
 LIMIT_TOTAL = "100"
+# Годовая подписка
+PRICE_RUB = "300"
+PAID_PER_YEAR = "10"
+APP_URL = "https://serg1306.github.io/avto-reshenie/"
+# Т-Банк: ключ терминала из личного кабинета; пароль терминала — секретом TBANK_PASSWORD
+TBANK_TERMINAL_KEY = ""
+TBANK_TAXATION = "usn_income"
 
 [[durable_objects.bindings]]
 name = "LIMITER"

@@ -5,7 +5,8 @@
 //  - "estimate": смета или счёт автосервиса (текст и/или фото) → сравнение с типичными ценами.
 // Поиск в интернете делает встроенный веб-поиск Claude, ответ приходит в JSON на русском.
 import Anthropic from "@anthropic-ai/sdk";
-import { Limiter, type Limit } from "./limiter";
+import { Limiter, type Plan } from "./limiter";
+import * as tbank from "./tbank";
 
 export { Limiter };
 
@@ -17,6 +18,14 @@ export interface Env {
   FREE_PER_DEVICE?: string; // бесплатных запросов с одного устройства за всё время
   LIMIT_PER_IP?: string; // в день с одного IP (защита от подмены id устройства)
   LIMIT_TOTAL?: string; // всего в день на весь сервис (потолок расходов)
+  // Подписка
+  PRICE_RUB?: string; // цена годовой подписки, ₽
+  PAID_PER_YEAR?: string; // ИИ-запросов в год по подписке
+  APP_URL?: string; // адрес приложения, сюда банк вернёт покупателя
+  TBANK_TERMINAL_KEY?: string; // из личного кабинета Т-Бизнеса
+  TBANK_PASSWORD?: string; // секрет: wrangler secret put TBANK_PASSWORD
+  TBANK_API?: string; // по умолчанию https://securepay.tinkoff.ru/v2
+  TBANK_TAXATION?: string; // система налогообложения для чека: osn, usn_income, usn_income_outcome ...
 }
 
 const num = (v: string | undefined, d: number) => (v && /^\d+$/.test(v) ? parseInt(v, 10) : d);
@@ -90,9 +99,9 @@ function cors(origin: string | null, env: Env): Record<string, string> {
   const ok = origin && (allowed.includes(origin) || origin.startsWith("http://localhost"));
   return {
     "Access-Control-Allow-Origin": ok ? origin : allowed[0] || "",
-    "Access-Control-Allow-Methods": "POST, OPTIONS",
+    "Access-Control-Allow-Methods": "GET, POST, OPTIONS",
     "Access-Control-Allow-Headers": "Content-Type, X-Device-Id",
-    "Access-Control-Expose-Headers": "X-Remaining",
+    "Access-Control-Expose-Headers": "X-Remaining, X-Paid",
     Vary: "Origin",
   };
 }
@@ -157,18 +166,108 @@ async function askClaude(client: Anthropic, system: string, content: Block[]) {
   return { refused: false as const, result: { ...result, sources } };
 }
 
+const EMAIL_RE = /^[^\s@]{1,64}@[^\s@]{1,190}\.[^\s@]{2,}$/;
+
+function deviceOf(request: Request): string {
+  const device = clean(request.headers.get("X-Device-Id"), 64).replace(/[^A-Za-z0-9-]/g, "");
+  return device || "ip-" + (request.headers.get("CF-Connecting-IP") || "unknown");
+}
+
+function planOf(request: Request, env: Env): Plan {
+  const ip = request.headers.get("CF-Connecting-IP") || "unknown";
+  return {
+    free: num(env.FREE_PER_DEVICE, 3),
+    limits: [
+      { key: "ip:" + ip, max: num(env.LIMIT_PER_IP, 15) },
+      { key: "total", max: num(env.LIMIT_TOTAL, 100) },
+    ],
+  };
+}
+
+const limiterOf = (env: Env) => env.LIMITER.get(env.LIMITER.idFromName("global"));
+
+async function readJson<T>(request: Request): Promise<T | null> {
+  try {
+    return (await request.json()) as T;
+  } catch {
+    return null;
+  }
+}
+
 export default {
   async fetch(request: Request, env: Env): Promise<Response> {
     const headers = cors(request.headers.get("Origin"), env);
     if (request.method === "OPTIONS") return new Response(null, { headers });
+    const path = new URL(request.url).pathname.replace(/\/+$/, "") || "/";
+
+    // Статус: сколько бесплатных попыток осталось, есть ли подписка
+    if (path === "/status" && request.method === "GET") {
+      const st = await limiterOf(env).status(deviceOf(request), num(env.FREE_PER_DEVICE, 3));
+      return json({ ...st, price: num(env.PRICE_RUB, 300), perYear: num(env.PAID_PER_YEAR, 10), payments: !!(env.TBANK_TERMINAL_KEY && env.TBANK_PASSWORD) }, 200, headers);
+    }
     if (request.method !== "POST") return json({ error: "Используйте POST" }, 405, headers);
 
-    let body: RequestBody;
-    try {
-      body = await request.json();
-    } catch {
-      return json({ error: "Неверный формат запроса" }, 400, headers);
+    // Оплата годовой подписки: создаём платёж в Т-Банке и отдаём ссылку на страницу оплаты
+    if (path === "/pay/init") {
+      if (!env.TBANK_TERMINAL_KEY || !env.TBANK_PASSWORD) return json({ error: "Оплата ещё не подключена" }, 503, headers);
+      const b = await readJson<{ email?: string }>(request);
+      const email = clean(b?.email, 254).toLowerCase();
+      if (!EMAIL_RE.test(email)) return json({ error: "Укажите правильный email: на него придёт чек" }, 400, headers);
+      const device = deviceOf(request);
+      const orderId = "sub-" + crypto.randomUUID();
+      const price = num(env.PRICE_RUB, 300);
+      const app = env.APP_URL || "https://serg1306.github.io/avto-reshenie/";
+      const limiter = limiterOf(env);
+      await limiter.createOrder(orderId, device, email);
+      try {
+        const pay = await tbank.init(
+          { terminalKey: env.TBANK_TERMINAL_KEY, password: env.TBANK_PASSWORD, api: env.TBANK_API || "https://securepay.tinkoff.ru/v2" },
+          {
+            amountKopecks: price * 100,
+            orderId,
+            description: "Подписка АвтоРешение на 1 год",
+            email,
+            notificationUrl: new URL("/pay/notify", request.url).toString(),
+            successUrl: app + "?paid=1",
+            failUrl: app + "?paid=0",
+            taxation: env.TBANK_TAXATION || "usn_income",
+          },
+        );
+        return json({ paymentUrl: pay.paymentUrl }, 200, headers);
+      } catch (e) {
+        return json({ error: "Не удалось создать платёж: " + (e instanceof Error ? e.message : "ошибка банка") }, 502, headers);
+      }
     }
+
+    // Уведомление от банка о статусе платежа. Отвечаем "OK", иначе банк будет повторять.
+    if (path === "/pay/notify") {
+      if (!env.TBANK_PASSWORD) return new Response("NOT CONFIGURED", { status: 503 });
+      const n = await readJson<Record<string, unknown>>(request);
+      if (!n || !(await tbank.verify(n, env.TBANK_PASSWORD)) || n.TerminalKey !== env.TBANK_TERMINAL_KEY) {
+        return new Response("BAD TOKEN", { status: 403 });
+      }
+      const amountOk = Number(n.Amount) === num(env.PRICE_RUB, 300) * 100;
+      if (n.Status === "CONFIRMED" && n.Success === true && amountOk) {
+        await limiterOf(env).confirmOrder(String(n.OrderId), num(env.PAID_PER_YEAR, 10));
+      }
+      return new Response("OK");
+    }
+
+    // Подключить на этом устройстве подписку, оплаченную раньше (по email из чека)
+    if (path === "/pay/restore") {
+      const b = await readJson<{ email?: string }>(request);
+      const email = clean(b?.email, 254).toLowerCase();
+      if (!EMAIL_RE.test(email)) return json({ error: "Укажите email, на который оформляли подписку" }, 400, headers);
+      const ok = await limiterOf(env).restore(deviceOf(request), email);
+      return ok
+        ? json({ ok: true }, 200, headers)
+        : json({ error: "Активной подписки на этот email не найдено" }, 404, headers);
+    }
+
+    if (path !== "/") return json({ error: "Не найдено" }, 404, headers);
+
+    const body = await readJson<RequestBody>(request);
+    if (!body) return json({ error: "Неверный формат запроса" }, 400, headers);
     const mode = body.mode === "estimate" ? "estimate" : "diagnose";
     const car = [clean(body.make, 40), clean(body.model, 60), clean(body.year, 4)].filter(Boolean).join(" ");
     const city = clean(body.city, 60);
@@ -203,28 +302,25 @@ export default {
         (estimate ? `\n\nСмета:\n${estimate}` : "\n\nСмета на фото.");
     }
 
-    // Лимиты: бесплатные попытки устройства (за всё время), IP в день и общий дневной потолок
-    const device = clean(request.headers.get("X-Device-Id"), 64).replace(/[^A-Za-z0-9-]/g, "");
-    const ip = request.headers.get("CF-Connecting-IP") || "unknown";
-    const free = num(env.FREE_PER_DEVICE, 3);
-    const limits: Limit[] = [
-      { key: "device:" + (device || "ip-" + ip), max: free, lifetime: true },
-      { key: "ip:" + ip, max: num(env.LIMIT_PER_IP, 15) },
-      { key: "total", max: num(env.LIMIT_TOTAL, 100) },
-    ];
+    // Списываем запрос: с подписки, иначе с бесплатных попыток; плюс дневные лимиты по IP и на сервис
+    const device = deviceOf(request);
+    const plan = planOf(request, env);
     const day = today();
-    const limiter = env.LIMITER.get(env.LIMITER.idFromName("global"));
-    const taken = await limiter.take(day, limits);
+    const limiter = limiterOf(env);
+    const taken = await limiter.take(day, device, plan);
     if (!taken.ok) {
+      const expired = taken.blocked === "free" && taken.until !== undefined;
       const msg = taken.blocked === "total"
         ? "Сегодня сервис исчерпал дневной запас ИИ-запросов. Попробуйте завтра."
         : taken.blocked === "ip"
           ? "Слишком много запросов с вашей сети сегодня. Попробуйте завтра."
-          : `Бесплатные попытки закончились (${free} из ${free}). Дальше ИИ-сводка доступна по подписке.`;
-      return json({ error: msg, limit: true, paywall: taken.blocked === "device" }, 429, { ...headers, "X-Remaining": "0" });
+          : expired
+            ? "Запас сводок по подписке закончился или срок подписки истёк. Продлите подписку."
+            : `Бесплатные попытки закончились (${plan.free} из ${plan.free}). Дальше ИИ-сводка доступна по подписке.`;
+      return json({ error: msg, limit: true, paywall: taken.blocked === "free" }, 429, { ...headers, "X-Remaining": "0" });
     }
-    const limitHeaders = { ...headers, "X-Remaining": String(taken.remaining) };
-    const refund = () => limiter.refund(day, limits);
+    const limitHeaders = { ...headers, "X-Remaining": String(taken.remaining), "X-Paid": taken.paid ? "1" : "0" };
+    const refund = () => limiter.refund(day, device, plan, taken.paid);
 
     const client = new Anthropic({ apiKey: env.ANTHROPIC_API_KEY, baseURL: env.ANTHROPIC_BASE_URL || undefined });
     try {

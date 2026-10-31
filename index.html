@@ -167,6 +167,7 @@ input[type=file]{padding:8px;background:var(--bg)}
       <summary>Настройки</summary>
       <div class="grid" style="margin-top:10px">
         <div><label for="aiurl">Адрес сервера ИИ-сводки</label><input id="aiurl" placeholder="https://avto-reshenie.….workers.dev"></div>
+        <div class="hint" id="substatus"></div>
         <div><label for="apikey">YouTube Data API v3 key</label><input id="apikey" placeholder="AIza…"></div>
         <div class="hint">Ключ хранится только в этом браузере. Бесплатно: 10 000 единиц в день, это около 90 поисков. Получить ключ: Google Cloud Console → APIs &amp; Services → включить «YouTube Data API v3» → Credentials → Create API key. Без ключа приложение покажет готовые ссылки на поиск в YouTube.</div>
       </div>
@@ -198,7 +199,7 @@ $("apikey").value = store.get("yt_key");
 // Адрес сервера сводки: из настроек или по умолчанию (заполняется после развёртывания сервера)
 const DEFAULT_AI_URL = "";
 $("aiurl").value = store.get("ai_url") || DEFAULT_AI_URL;
-$("aiurl").addEventListener("change", e => store.set("ai_url", e.target.value.trim()));
+$("aiurl").addEventListener("change", e => { store.set("ai_url", e.target.value.trim()); loadStatus(); });
 let lastVideos = [];
 const getJSON = (k, d) => { try { return JSON.parse(store.get(k) || "") ?? d; } catch(e) { return d; } };
 const setJSON = (k, v) => store.set(k, JSON.stringify(v));
@@ -209,7 +210,8 @@ function aiFetch(body){
 }
 function remainingNote(r){
   const n = r.headers.get("X-Remaining");
-  return n === null ? "" : `<p class="hint">Бесплатных ИИ-попыток осталось: ${esc(n)}.</p>`;
+  if (n === null) return "";
+  return `<p class="hint">${r.headers.get("X-Paid") === "1" ? "ИИ-запросов по подписке осталось" : "Бесплатных ИИ-попыток осталось"}: ${esc(n)}.</p>`;
 }
 // Ответ сервера: при исчерпании бесплатных попыток показываем предложение подписки
 async function aiResult(r){
@@ -218,9 +220,58 @@ async function aiResult(r){
   if (!r.ok || d.error) throw new Error(d.error || ("код " + r.status));
   return d;
 }
+// Подписка: экран оплаты, восстановление по email, статус
+const apiUrl = path => new URL(path, $("aiurl").value.trim()).toString();
+async function apiPost(path, body){
+  const r = await fetch(apiUrl(path), {method: "POST", headers: {"Content-Type": "application/json", "X-Device-Id": deviceId()}, body: JSON.stringify(body)});
+  const d = await r.json().catch(() => ({error: "сервер вернул непонятный ответ"}));
+  if (!r.ok || d.error) throw new Error(d.error || ("код " + r.status));
+  return d;
+}
+let subInfo = {price: 300, perYear: 10, payments: false};
+async function loadStatus(){
+  if (!$("aiurl").value.trim()) { $("substatus").textContent = ""; return; }
+  try {
+    const r = await fetch(apiUrl("/status"), {headers: {"X-Device-Id": deviceId()}});
+    const d = await r.json(); subInfo = d;
+    $("substatus").textContent = d.paid
+      ? `Подписка до ${new Date(d.until).toLocaleDateString("ru-RU")}, осталось ИИ-запросов: ${d.left}.`
+      : `Бесплатных ИИ-попыток осталось: ${d.freeLeft}.`;
+  } catch(e) { $("substatus").textContent = ""; }
+}
 function paywallHtml(msg){
-  return `<div class="cause"><h3>Бесплатные попытки закончились</h3><p>${esc(msg)}</p>
-    <p class="hint">Подписка скоро появится. Пока можно задать тот же вопрос в Claude бесплатно: <a target="_blank" rel="noopener" href="${claudeLink()}">открыть в Claude ↗</a></p></div>`;
+  const id = "pw" + Math.random().toString(36).slice(2, 7);
+  setTimeout(() => bindPaywall(id), 0);
+  return `<div class="cause" id="${id}"><h3>Подписка АвтоРешение</h3><p>${esc(msg)}</p>
+    <p><b>${esc(subInfo.price ?? 300)} ₽ в год</b>, ${esc(subInfo.perYear ?? 10)} ИИ-сводок или проверок счёта. Подписка работает на всех ваших устройствах.</p>
+    <div class="grid" style="gap:8px;margin-top:8px">
+      <div><label for="${id}-email">Email для чека</label><input id="${id}-email" type="email" autocomplete="email" placeholder="you@example.ru"></div>
+      <div class="actions"><button type="button" class="primary" data-pay>Оплатить ${esc(subInfo.price ?? 300)} ₽</button>
+        <button type="button" class="ghost small" data-restore>Я уже оплачивал</button></div>
+      <span class="status" data-st></span>
+    </div>
+    <p class="hint">Оплата картой или через СБП на защищённой странице Т-Банка. Пока подписка не оформлена, можно спросить бесплатно в Claude: <a target="_blank" rel="noopener" href="${claudeLink()}">открыть в Claude ↗</a></p></div>`;
+}
+function bindPaywall(id){
+  const box = $(id); if (!box) return;
+  const st = box.querySelector("[data-st]"), email = () => $(id + "-email").value.trim();
+  const say = (t, err) => { st.textContent = t; st.className = "status" + (err ? " err" : ""); };
+  box.querySelector("[data-pay]").addEventListener("click", async e => {
+    if (!email()) { say("Укажите email: на него придёт чек.", true); return; }
+    e.target.disabled = true; say("Создаю платёж…");
+    try { const d = await apiPost("/pay/init", {email: email()}); location.href = d.paymentUrl; }
+    catch(err) { say(err.message, true); e.target.disabled = false; }
+  });
+  box.querySelector("[data-restore]").addEventListener("click", async e => {
+    if (!email()) { say("Укажите email, на который оформляли подписку.", true); return; }
+    e.target.disabled = true;
+    try {
+      await apiPost("/pay/restore", {email: email()}); loadStatus();
+      if (box.closest("#ai")) { renderAiPrompt(); $("aiout").innerHTML = `<p class="status">Подписка подключена на этом устройстве. Нажмите «Сделать ИИ-сводку».</p>`; }
+      else say("Подписка подключена на этом устройстве. Нажмите «Проверить цены» ещё раз.");
+    }
+    catch(err) { say(err.message, true); } finally { e.target.disabled = false; }
+  });
 }
 
 // Частые коды ошибок OBD-II (общие для всех марок). Остальные расшифрует ИИ.
@@ -393,7 +444,17 @@ $("histlist").addEventListener("click", e => {
   const h = getHistory()[+b.dataset.i]; ["make","model","year","problem","codes"].forEach(k => $(k).value = h[k] || ""); renderCodes(); renderGarage();
   $("form").requestSubmit();
 });
-renderHistory(); renderGarage();
+renderHistory(); renderGarage(); loadStatus();
+// Возврат со страницы оплаты Т-Банка
+(function(){
+  const q = new URLSearchParams(location.search).get("paid"); if (q === null) return;
+  history.replaceState(null, "", location.pathname);
+  const a = $("ai"); a.hidden = false;
+  a.innerHTML = q === "1"
+    ? `<h2>Спасибо за оплату!</h2><p>Подписка активируется в течение минуты. Чек придёт на email.</p>`
+    : `<h2>Оплата не прошла</h2><p>Деньги не списаны. Попробуйте ещё раз или выберите другой способ оплаты.</p>`;
+  if (q === "1") setTimeout(loadStatus, 5000);
+})();
 // Обложка: показываем при каждом открытии, скрываем по нажатию или через 3 секунды
 (function(){ const sp = $("splash"); const hide = () => { sp.classList.add("hide"); setTimeout(() => sp.hidden = true, 600); };
   sp.addEventListener("click", hide); setTimeout(hide, 3000); })();
@@ -497,7 +558,7 @@ async function runAi(){
     const r = await aiFetch({make: $("make").value, model: $("model").value, year: $("year").value, city: $("city").value,
         problem: [$("problem").value.trim(), soundText()].filter(Boolean).join(", "), codes: parseCodes(), images: toImages(photoCache.photos), videos: lastVideos});
     const d = await aiResult(r);
-    out.innerHTML = renderAi(d) + remainingNote(r); btn.hidden = true; saveSummary(d);
+    out.innerHTML = renderAi(d) + remainingNote(r); btn.hidden = true; saveSummary(d); loadStatus();
   } catch(e) {
     if (e.paywall) { out.innerHTML = paywallHtml(e.message); btn.hidden = true; return; }
     out.innerHTML = `<p class="status err">Не получилось: ${esc(e.message)}. Попробуйте ещё раз.</p>`;
@@ -536,7 +597,7 @@ $("estgo").addEventListener("click", async () => {
     const r = await aiFetch({mode: "estimate", make: $("make").value, model: $("model").value, year: $("year").value, city: $("city").value,
         problem: $("problem").value, estimate: text, images: toImages(photos)});
     const d = await aiResult(r);
-    $("estout").innerHTML = renderEstimate(d) + remainingNote(r); st.textContent = "";
+    $("estout").innerHTML = renderEstimate(d) + remainingNote(r); st.textContent = ""; loadStatus();
   } catch(e) {
     if (e.paywall) { $("estout").innerHTML = paywallHtml(e.message); st.textContent = ""; }
     else { st.textContent = "Не получилось: " + e.message; st.className = "status err"; }
