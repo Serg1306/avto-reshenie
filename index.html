@@ -1,0 +1,289 @@
+<!doctype html>
+<html lang="ru">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>АвтоРешение</title>
+<link rel="manifest" href="manifest.json">
+<link rel="icon" href="icon.svg" type="image/svg+xml">
+<link rel="apple-touch-icon" href="icon.svg">
+<meta name="theme-color" content="#d9480f">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=PT+Sans:wght@400;700&family=PT+Sans+Narrow:wght@700&family=PT+Mono&display=swap">
+<style>
+/* Layout: одна колонка — форма-«заявка в сервис» сверху, сводка и карточки видео ниже */
+:root{
+  --bg:#f3f4f1; --panel:#ffffff; --fg:#1d2321; --muted:#5d6763; --line:#d9ddd8;
+  --accent:#d9480f; --accent-ink:#ffffff; --ok:#2b8a3e; --chip:#eceee9;
+  --display:"PT Sans Narrow","Arial Narrow",Arial,sans-serif;
+  --body:"PT Sans",system-ui,-apple-system,"Segoe UI",sans-serif;
+  --mono:"PT Mono",ui-monospace,Menlo,Consolas,monospace;
+}
+@media (prefers-color-scheme: dark){:root{
+  --bg:#141817; --panel:#1d2321; --fg:#e8ece9; --muted:#9aa5a0; --line:#323a37;
+  --accent:#ff7a3d; --accent-ink:#141817; --ok:#69db7c; --chip:#28302d; color-scheme:dark}}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--fg);font:16px/1.5 var(--body);
+  padding:24px max(16px,env(safe-area-inset-right)) 48px max(16px,env(safe-area-inset-left))}
+.wrap{max-width:920px;margin:0 auto;display:grid;gap:20px}
+header{display:flex;align-items:baseline;justify-content:space-between;gap:12px;flex-wrap:wrap}
+h1{font:700 2.2rem/1 var(--display);margin:0;letter-spacing:.01em}
+h1 span{color:var(--accent)}
+.tag{color:var(--muted);font-size:.95rem}
+h2{font:700 1.3rem/1.2 var(--display);margin:0 0 10px}
+.panel{background:var(--panel);border:1px solid var(--line);border-radius:10px;padding:20px}
+label{display:block;font-size:.8rem;text-transform:uppercase;letter-spacing:.06em;color:var(--muted);margin-bottom:4px}
+input,textarea,select{width:100%;font:inherit;color:var(--fg);background:var(--bg);border:1px solid var(--line);border-radius:6px;padding:10px 12px}
+input:focus,textarea:focus,select:focus,button:focus-visible,a:focus-visible{outline:2px solid var(--accent);outline-offset:1px}
+#vin{font-family:var(--mono);text-transform:uppercase;letter-spacing:.08em}
+textarea{min-height:84px;resize:vertical}
+.grid{display:grid;gap:14px}
+.row{display:grid;gap:12px;grid-template-columns:1fr 1fr 110px}
+.vinrow{display:grid;gap:10px;grid-template-columns:1fr auto;align-items:end}
+@media (max-width:560px){.row{grid-template-columns:1fr 1fr}.row>div:last-child{grid-column:1/-1}}
+.or{display:flex;align-items:center;gap:10px;color:var(--muted);font-size:.85rem}
+.or::before,.or::after{content:"";flex:1;border-top:1px dashed var(--line)}
+button{font:700 1rem var(--body);border:0;border-radius:6px;padding:11px 18px;cursor:pointer}
+.primary{background:var(--accent);color:var(--accent-ink)}
+.ghost{background:var(--chip);color:var(--fg)}
+button:disabled{opacity:.55;cursor:wait}
+.actions{display:flex;gap:10px;flex-wrap:wrap;align-items:center}
+.hint{font-size:.85rem;color:var(--muted)}
+.status{font-size:.9rem;color:var(--muted)}
+.status.err{color:var(--accent)}
+.chips{display:flex;flex-wrap:wrap;gap:8px}
+.chip{background:var(--chip);border-radius:999px;padding:4px 12px;font-size:.9rem}
+.chip b{font-family:var(--mono);font-weight:400;color:var(--muted);margin-left:4px}
+.links a{display:inline-block;margin:4px 8px 4px 0;color:var(--accent);font-weight:700}
+.videos{display:grid;gap:12px}
+.video{display:grid;grid-template-columns:200px 1fr;gap:14px;background:var(--panel);border:1px solid var(--line);border-radius:10px;padding:12px;color:inherit;text-decoration:none}
+.video:hover{border-color:var(--accent)}
+.video img{width:100%;aspect-ratio:16/9;object-fit:cover;border-radius:6px;background:var(--chip)}
+.video h3{font-size:1.02rem;margin:0 0 4px;line-height:1.3}
+.video .meta{font-size:.85rem;color:var(--muted);font-family:var(--mono)}
+.video p{margin:6px 0 0;font-size:.9rem;color:var(--muted);overflow:hidden;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical}
+.video>div{min-width:0}
+.score{display:inline-block;font-family:var(--mono);font-size:.8rem;background:var(--chip);border-radius:4px;padding:1px 6px;margin-right:6px}
+.score.hi{background:var(--ok);color:var(--panel)}
+@media (max-width:560px){.video{grid-template-columns:1fr}}
+details summary{cursor:pointer;font-weight:700}
+.chip.btn{border:0;cursor:pointer;font:inherit;color:var(--fg)}
+.chip.btn:hover{background:var(--line)}
+.car{font-family:var(--mono);font-size:.9rem;color:var(--ok)}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header>
+    <h1>Авто<span>Решение</span></h1>
+    <div class="tag">Что YouTube знает о вашей поломке</div>
+  </header>
+
+  <form class="panel grid" id="form" autocomplete="off">
+    <div class="vinrow">
+      <div><label for="vin">VIN-код (17 символов)</label>
+        <input id="vin" maxlength="17" placeholder="например, JTDBR32E720123456"></div>
+      <button type="button" class="ghost" id="decode">Расшифровать VIN</button>
+    </div>
+    <div class="car" id="carinfo" hidden></div>
+    <div class="or">или вручную</div>
+    <div class="row">
+      <div><label for="make">Марка</label><input id="make" placeholder="Toyota"></div>
+      <div><label for="model">Модель</label><input id="model" placeholder="Camry"></div>
+      <div><label for="year">Год</label><input id="year" inputmode="numeric" maxlength="4" placeholder="2012"></div>
+    </div>
+    <div><label for="problem">Что случилось</label>
+      <textarea id="problem" placeholder="Например: не заводится на холодную, стучит при запуске, горит check engine"></textarea></div>
+    <div class="row" style="grid-template-columns:1fr 1fr">
+      <div><label for="lang">Язык видео</label>
+        <select id="lang"><option value="both">Русские + английские</option><option value="ru">Только русские</option><option value="en">Только английские</option></select></div>
+      <div><label for="order">Сортировка</label>
+        <select id="order"><option value="smart">Самые полезные</option><option value="views">По просмотрам</option><option value="date">Сначала новые</option></select></div>
+    </div>
+    <div class="actions">
+      <button class="primary" id="go" type="submit">Найти решения</button>
+      <span class="status" id="status"></span>
+    </div>
+    <details>
+      <summary>Ключ YouTube API</summary>
+      <div class="grid" style="margin-top:10px">
+        <div><label for="apikey">YouTube Data API v3 key</label><input id="apikey" placeholder="AIza…"></div>
+        <div class="hint">Ключ хранится только в этом браузере. Бесплатно: 10 000 единиц в день, это около 90 поисков. Получить ключ: Google Cloud Console → APIs &amp; Services → включить «YouTube Data API v3» → Credentials → Create API key. Без ключа приложение покажет готовые ссылки на поиск в YouTube.</div>
+      </div>
+    </details>
+  </form>
+
+  <section class="panel" id="history" hidden><h2>Недавние поиски</h2><div class="chips" id="histlist"></div></section>
+  <section class="panel" id="summary" hidden></section>
+  <section class="videos" id="videos"></section>
+</div>
+
+<script>
+const $ = id => document.getElementById(id);
+const store = { get(k){try{return localStorage.getItem(k)||""}catch(e){return ""}}, set(k,v){try{localStorage.setItem(k,v)}catch(e){}} };
+$("apikey").value = store.get("yt_key");
+$("apikey").addEventListener("change", e => store.set("yt_key", e.target.value.trim()));
+
+// Частые симптомы: русский → английский, чтобы искать и в англоязычном YouTube
+const DICT = [
+  ["не заводится","won't start"],["плохо заводится","hard start"],["на холодную","cold start"],["на горячую","hot start"],
+  ["стук","knocking noise"],["стучит","knocking noise"],["скрип","squeak"],["скрипит","squeaking"],["свист","whistle noise"],["гул","humming noise"],
+  ["вибрация","vibration"],["вибрирует","vibration"],["троит","misfire"],["пропуски зажигания","misfire"],["глохнет","stalling"],
+  ["плавают обороты","rough idle"],["холостой ход","idle"],["горит check engine","check engine light"],["чек","check engine light"],
+  ["перегрев","overheating"],["греется","overheating"],["течь","leak"],["течёт","leak"],["масло","oil"],["антифриз","coolant"],
+  ["тормоза","brakes"],["тормоз","brake"],["кондиционер","AC"],["печка","heater"],["не греет","no heat"],["аккумулятор","battery"],
+  ["стартер","starter"],["генератор","alternator"],["коробка","transmission"],["пинается","harsh shifting"],["пинки","harsh shifting"],
+  ["рывки","jerking"],["дергается","jerking"],["сцепление","clutch"],["подвеска","suspension"],["руль","steering"],
+  ["дым","smoke"],["расход","fuel consumption"],["не едет","no power"],["нет тяги","loss of power"],["ошибка","code"],["замена","replacement"]
+];
+function toEnglish(text){
+  const t = text.toLowerCase(); const out = [];
+  DICT.forEach(([ru,en]) => { if (t.includes(ru) && !out.includes(en)) out.push(en); });
+  const codes = text.match(/\b[PBCU][0-9]{4}\b/gi) || []; // OBD-коды переносим как есть
+  return [...codes.map(c=>c.toUpperCase()), ...out].join(" ");
+}
+
+function car(){ return [$("make").value, $("model").value, $("year").value].map(s=>s.trim()).filter(Boolean).join(" "); }
+
+function buildQueries(){
+  const c = car(), p = $("problem").value.trim(), lang = $("lang").value, q = [];
+  if (lang !== "en") q.push({lang:"ru", text:`${c} ${p}`.trim()});
+  if (lang !== "ru") { const en = toEnglish(p); q.push({lang:"en", text:`${c} ${en || p} fix`.trim()}); }
+  return q;
+}
+
+$("decode").addEventListener("click", async () => {
+  const vin = $("vin").value.trim().toUpperCase();
+  if (!/^[A-HJ-NPR-Z0-9]{17}$/.test(vin)) { setStatus("VIN должен содержать 17 символов, без букв I, O и Q.", true); return; }
+  $("decode").disabled = true; setStatus("Расшифровываю VIN…");
+  try {
+    const r = await fetch(`https://vpic.nhtsa.dot.gov/api/vehicles/DecodeVinValues/${vin}?format=json`);
+    const d = (await r.json()).Results[0];
+    if (!d.Make) throw new Error("База NHTSA не знает этот VIN");
+    $("make").value = cap(d.Make); $("model").value = d.Model || ""; $("year").value = d.ModelYear || "";
+    const extra = [d.DisplacementL && d.DisplacementL + " л", d.EngineModel, d.FuelTypePrimary, d.TransmissionStyle].filter(Boolean).join(" · ");
+    $("carinfo").textContent = `✓ ${cap(d.Make)} ${d.Model||""} ${d.ModelYear||""}${extra ? " — " + extra : ""}`;
+    $("carinfo").hidden = false; setStatus("");
+  } catch(e) {
+    setStatus("Не удалось расшифровать VIN (" + e.message + "). Введите марку, модель и год вручную. Европейские и японские VIN NHTSA знает не всегда.", true);
+  } finally { $("decode").disabled = false; }
+});
+const cap = s => s ? s.charAt(0) + s.slice(1).toLowerCase() : s;
+
+// История последних 8 поисков (только в этом браузере)
+function getHistory(){ try { return JSON.parse(store.get("history") || "[]"); } catch(e){ return []; } }
+function saveHistory(){
+  const item = {make:$("make").value.trim(), model:$("model").value.trim(), year:$("year").value.trim(), problem:$("problem").value.trim()};
+  const key = JSON.stringify(item);
+  const list = [item, ...getHistory().filter(h => JSON.stringify(h) !== key)].slice(0, 8);
+  store.set("history", JSON.stringify(list)); renderHistory();
+}
+function renderHistory(){
+  const list = getHistory(); $("history").hidden = !list.length;
+  $("histlist").innerHTML = list.map((h,i) => `<button type="button" class="chip btn" data-i="${i}">${esc([h.make,h.model,h.year].filter(Boolean).join(" "))}: ${esc(h.problem.length > 40 ? h.problem.slice(0,40) + "…" : h.problem)}</button>`).join("");
+}
+$("histlist").addEventListener("click", e => {
+  const b = e.target.closest("[data-i]"); if (!b) return;
+  const h = getHistory()[+b.dataset.i]; ["make","model","year","problem"].forEach(k => $(k).value = h[k] || "");
+  $("form").requestSubmit();
+});
+renderHistory();
+if ("serviceWorker" in navigator && location.protocol.startsWith("http")) navigator.serviceWorker.register("sw.js").catch(() => {});
+
+function setStatus(t, err){ $("status").textContent = t; $("status").className = "status" + (err ? " err" : ""); }
+
+$("form").addEventListener("submit", async e => {
+  e.preventDefault();
+  if (!car() || !$("problem").value.trim()) { setStatus("Укажите машину (или VIN) и опишите проблему.", true); return; }
+  const key = $("apikey").value.trim(); store.set("yt_key", key);
+  saveHistory();
+  const queries = buildQueries();
+  if (!key) { renderLinksOnly(queries); return; }
+  $("go").disabled = true; setStatus("Ищу на YouTube…");
+  try {
+    const all = new Map();
+    for (const q of queries) {
+      const u = new URL("https://www.googleapis.com/youtube/v3/search");
+      Object.entries({part:"snippet", type:"video", maxResults:"15", q:q.text, relevanceLanguage:q.lang, key,
+        order: $("order").value === "date" ? "date" : "relevance"}).forEach(([k,v]) => u.searchParams.set(k,v));
+      const d = await api(u);
+      d.items.forEach(it => { if (!all.has(it.id.videoId)) all.set(it.id.videoId, {id:it.id.videoId, lang:q.lang, ...it.snippet, title:unesc(it.snippet.title), description:unesc(it.snippet.description), channelTitle:unesc(it.snippet.channelTitle)}); });
+    }
+    if (!all.size) { setStatus("Ничего не нашлось. Попробуйте описать проблему короче."); renderSummary([], queries); $("videos").innerHTML=""; return; }
+    const u2 = new URL("https://www.googleapis.com/youtube/v3/videos");
+    u2.searchParams.set("part","statistics,contentDetails"); u2.searchParams.set("id",[...all.keys()].join(",")); u2.searchParams.set("key",key);
+    (await api(u2)).items.forEach(v => Object.assign(all.get(v.id), {stats:v.statistics, dur:v.contentDetails.duration}));
+    const vids = rank([...all.values()]);
+    renderSummary(vids, queries); renderVideos(vids); setStatus(`Найдено ${vids.length} видео`);
+  } catch(err) {
+    setStatus("Ошибка YouTube: " + err.message, true); renderLinksOnly(queries, true);
+  } finally { $("go").disabled = false; }
+});
+
+async function api(u){
+  const r = await fetch(u); const d = await r.json();
+  if (d.error) {
+    const reason = d.error.errors && d.error.errors[0] && d.error.errors[0].reason;
+    if (reason === "quotaExceeded") throw new Error("дневной лимит ключа исчерпан, попробуйте завтра");
+    if (reason === "keyInvalid" || d.error.code === 400) throw new Error("ключ не подходит, проверьте его");
+    throw new Error(d.error.message);
+  }
+  return d;
+}
+
+// Оценка полезности: совпадение с машиной и симптомами в названии + популярность + лайки
+function rank(vids){
+  const words = (car() + " " + $("problem").value + " " + toEnglish($("problem").value)).toLowerCase().split(/[^\p{L}\p{N}]+/u).filter(w => w.length > 2);
+  vids.forEach(v => {
+    const title = (v.title + " " + v.description).toLowerCase();
+    const hits = words.filter(w => title.includes(w)).length;
+    const views = +(v.stats && v.stats.viewCount) || 0, likes = +(v.stats && v.stats.likeCount) || 0;
+    v.views = views;
+    v.score = Math.round(Math.min(100, hits / Math.max(words.length,1) * 60 + Math.log10(views + 1) * 5 + (views ? Math.min(likes / views * 400, 10) : 0)));
+  });
+  const o = $("order").value;
+  return vids.sort((a,b) => o === "views" ? b.views - a.views : o === "date" ? b.publishedAt.localeCompare(a.publishedAt) : b.score - a.score);
+}
+
+const STOP = new Set("как что это для при или без его она они так все уже где чем the and for with how fix your you this that from car auto авто машина машины видео video своими руками ремонт repair".split(" "));
+function renderSummary(vids, queries){
+  const s = $("summary"); s.hidden = false;
+  const own = new Set((car() + " " + $("problem").value + " " + toEnglish($("problem").value)).toLowerCase().split(/[^\p{L}\p{N}]+/u));
+  const freq = {};
+  vids.forEach(v => new Set(v.title.toLowerCase().split(/[^\p{L}\p{N}]+/u)).forEach(w => {
+    if (w.length > 3 && !STOP.has(w) && !own.has(w) && !/^\d+$/.test(w)) freq[w] = (freq[w]||0) + 1; }));
+  const top = Object.entries(freq).filter(([,n]) => n > 1).sort((a,b) => b[1]-a[1]).slice(0,14);
+  const channels = {}; vids.forEach(v => channels[v.channelTitle] = (channels[v.channelTitle]||0) + 1);
+  const topCh = Object.entries(channels).sort((a,b)=>b[1]-a[1]).slice(0,5);
+  s.innerHTML = `<h2>Что говорит YouTube</h2>
+    <p class="hint">Найдено ${vids.length} видео по запросам: ${queries.map(q => "«" + esc(q.text) + "»").join(", ")}.</p>
+    ${top.length ? `<label>Чаще всего в названиях (возможные причины и детали)</label><div class="chips">${top.map(([w,n]) => `<span class="chip">${esc(w)}<b>${n}</b></span>`).join("")}</div>` : ""}
+    ${topCh.length ? `<label style="margin-top:12px">Каналы, которые разбирали проблему</label><div class="chips">${topCh.map(([c,n]) => `<span class="chip">${esc(c)}<b>${n}</b></span>`).join("")}</div>` : ""}
+    <div class="links" style="margin-top:12px">${queries.map(q => `<a target="_blank" rel="noopener" href="https://www.youtube.com/results?search_query=${encodeURIComponent(q.text)}">Открыть поиск на YouTube (${q.lang.toUpperCase()}) ↗</a>`).join("")}</div>`;
+}
+
+function renderLinksOnly(queries, afterError){
+  const s = $("summary"); s.hidden = false; $("videos").innerHTML = "";
+  s.innerHTML = `<h2>Готовые запросы для YouTube</h2>
+    ${afterError ? "" : `<p class="hint">Чтобы приложение само собрало видео, оценило их и показало сводку, добавьте ключ YouTube API в разделе выше.</p>`}
+    <div class="links">${queries.map(q => `<a target="_blank" rel="noopener" href="https://www.youtube.com/results?search_query=${encodeURIComponent(q.text)}">${esc(q.text)} ↗</a>`).join("")}</div>`;
+  if (!afterError) setStatus("");
+}
+
+function renderVideos(vids){
+  $("videos").innerHTML = vids.map(v => `<a class="video" target="_blank" rel="noopener" href="https://www.youtube.com/watch?v=${v.id}">
+    <img loading="lazy" alt="" src="${v.thumbnails && (v.thumbnails.medium||v.thumbnails.default).url}">
+    <div><h3>${esc(v.title)}</h3>
+    <div class="meta"><span class="score${v.score >= 60 ? " hi" : ""}">${v.score}/100</span>${esc(v.channelTitle)} · ${fmtViews(v.views)} просм. · ${dur(v.dur)} · ${v.publishedAt.slice(0,4)} · ${v.lang.toUpperCase()}</div>
+    <p>${esc(v.description)}</p></div></a>`).join("");
+}
+
+const fmtViews = n => n >= 1e6 ? (n/1e6).toFixed(1) + " млн" : n >= 1e3 ? Math.round(n/1e3) + " тыс" : String(n);
+function dur(iso){ const m = /PT(?:(\d+)H)?(?:(\d+)M)?(?:(\d+)S)?/.exec(iso||"") || []; const h=+m[1]||0, mi=+m[2]||0, s=+m[3]||0;
+  return (h ? h + ":" + String(mi).padStart(2,"0") : mi) + ":" + String(s).padStart(2,"0"); }
+function unesc(s){ const t = document.createElement("textarea"); t.innerHTML = s || ""; return t.value; }
+function esc(s){ const d = document.createElement("div"); d.textContent = s || ""; return d.innerHTML.replace(/"/g,"&quot;"); }
+</script>
+</body>
+</html>

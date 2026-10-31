@@ -1,0 +1,12 @@
+{
+  "name": "АвтоРешение",
+  "short_name": "АвтоРешение",
+  "description": "Поиск решений автомобильных проблем на YouTube",
+  "lang": "ru",
+  "start_url": "./index.html",
+  "scope": "./",
+  "display": "standalone",
+  "background_color": "#f3f4f1",
+  "theme_color": "#d9480f",
+  "icons": [{"src": "icon.svg", "sizes": "any", "type": "image/svg+xml", "purpose": "any maskable"}]
+}
