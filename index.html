@@ -58,6 +58,11 @@ button:disabled{opacity:.55;cursor:wait}
 .chips{display:flex;flex-wrap:wrap;gap:8px}
 .chip{background:var(--chip);border-radius:999px;padding:4px 12px;font-size:.9rem}
 .chip b{font-family:var(--mono);font-weight:400;color:var(--muted);margin-left:4px}
+.sources{display:grid;gap:10px;grid-template-columns:repeat(auto-fill,minmax(230px,1fr))}
+.src{display:block;border:1px solid var(--line);border-radius:8px;padding:10px 12px;text-decoration:none;color:var(--fg)}
+.src:hover{border-color:var(--accent)}
+.src b{display:block;color:var(--accent)}
+.src span{font-size:.85rem;color:var(--muted)}
 .links a{display:inline-block;margin:4px 8px 4px 0;color:var(--accent);font-weight:700}
 .videos{display:grid;gap:12px}
 .video{display:grid;grid-template-columns:200px 1fr;gap:14px;background:var(--panel);border:1px solid var(--line);border-radius:10px;padding:12px;color:inherit;text-decoration:none}
@@ -124,6 +129,7 @@ details summary{cursor:pointer;font-weight:700}
   </form>
 
   <section class="panel" id="history" hidden><h2>Недавние поиски</h2><div class="chips" id="histlist"></div></section>
+  <section class="panel" id="web" hidden></section>
   <section class="panel" id="summary" hidden></section>
   <section class="videos" id="videos"></section>
 </div>
@@ -211,6 +217,7 @@ $("form").addEventListener("submit", async e => {
   const key = $("apikey").value.trim(); store.set("yt_key", key);
   saveHistory();
   const queries = buildQueries();
+  renderWeb();
   if (!key) { renderLinksOnly(queries); return; }
   $("go").disabled = true; setStatus("Ищу на YouTube…");
   try {
@@ -273,6 +280,24 @@ function renderSummary(vids, queries){
     ${top.length ? `<label>Чаще всего в названиях (возможные причины и детали)</label><div class="chips">${top.map(([w,n]) => `<span class="chip">${esc(w)}<b>${n}</b></span>`).join("")}</div>` : ""}
     ${topCh.length ? `<label style="margin-top:12px">Каналы, которые разбирали проблему</label><div class="chips">${topCh.map(([c,n]) => `<span class="chip">${esc(c)}<b>${n}</b></span>`).join("")}</div>` : ""}
     <div class="links" style="margin-top:12px">${queries.map(q => `<a target="_blank" rel="noopener" href="https://www.youtube.com/results?search_query=${encodeURIComponent(q.text)}">Открыть поиск на YouTube (${q.lang.toUpperCase()}) ↗</a>`).join("")}</div>`;
+}
+
+// Поиск по всему интернету: готовые запросы к поисковикам и автофорумам
+function renderWeb(){
+  const c = car(), p = $("problem").value.trim(), ru = `${c} ${p}`, en = `${c} ${toEnglish(p) || p}`;
+  const g = q => "https://www.google.com/search?q=" + encodeURIComponent(q);
+  const SRC = [
+    ["Google", "весь интернет", g(ru)],
+    ["Яндекс", "весь интернет, русскоязычные сайты", "https://yandex.ru/search/?text=" + encodeURIComponent(ru)],
+    ["Drive2", "бортжурналы владельцев", g(ru + " site:drive2.ru")],
+    ["Форумы Drom", "обсуждения на forums.drom.ru", g(ru + " site:forums.drom.ru")],
+    ["Клубные форумы", "форумы владельцев модели", g(ru + " форум")],
+    ["Reddit", "англоязычные механики и владельцы", g(en + " site:reddit.com")],
+    ["Отзывные кампании и бюллетени", "заводские отзывы (recall) и сервисные бюллетени (TSB)", g(en + " recall OR TSB")],
+  ];
+  const w = $("web"); w.hidden = false;
+  w.innerHTML = `<h2>Поиск по интернету</h2><p class="hint">Те же запросы на форумах и сайтах. Откроются в новой вкладке.</p>
+    <div class="sources">${SRC.map(([n,d,u]) => `<a class="src" target="_blank" rel="noopener" href="${u}"><b>${n} ↗</b><span>${d}</span></a>`).join("")}</div>`;
 }
 
 function renderLinksOnly(queries, afterError){
