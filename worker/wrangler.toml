@@ -1,0 +1,7 @@
+name = "avto-reshenie"
+main = "src/index.ts"
+compatibility_date = "2025-09-15"
+compatibility_flags = ["nodejs_compat"]
+
+[vars]
+ALLOWED_ORIGINS = "https://serg1306.github.io"

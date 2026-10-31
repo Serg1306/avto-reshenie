@@ -58,6 +58,15 @@ button:disabled{opacity:.55;cursor:wait}
 .chips{display:flex;flex-wrap:wrap;gap:8px}
 .chip{background:var(--chip);border-radius:999px;padding:4px 12px;font-size:.9rem}
 .chip b{font-family:var(--mono);font-weight:400;color:var(--muted);margin-left:4px}
+.ai-urg{display:inline-block;font-weight:700;border-radius:999px;padding:3px 12px;margin-bottom:8px;background:var(--chip)}
+.ai-urg.bad{background:var(--accent);color:var(--accent-ink)}
+.ai-urg.ok{background:var(--ok);color:var(--panel)}
+.causes{display:grid;gap:10px;margin:12px 0}
+.cause{border:1px solid var(--line);border-radius:8px;padding:10px 12px}
+.cause h3{margin:0 0 4px;font-size:1rem}
+.cause .lk{font-family:var(--mono);font-size:.8rem;color:var(--muted);margin-left:6px;font-weight:400}
+.cause p{margin:2px 0;font-size:.92rem}
+#ai ol,#ai ul{margin:6px 0 0;padding-left:20px}
 .sources{display:grid;gap:10px;grid-template-columns:repeat(auto-fill,minmax(230px,1fr))}
 .src{display:block;border:1px solid var(--line);border-radius:8px;padding:10px 12px;text-decoration:none;color:var(--fg)}
 .src:hover{border-color:var(--accent)}
@@ -120,8 +129,9 @@ details summary{cursor:pointer;font-weight:700}
       <span class="status" id="status"></span>
     </div>
     <details>
-      <summary>Ключ YouTube API</summary>
+      <summary>Настройки</summary>
       <div class="grid" style="margin-top:10px">
+        <div><label for="aiurl">Адрес сервера ИИ-сводки</label><input id="aiurl" placeholder="https://avto-reshenie.….workers.dev"></div>
         <div><label for="apikey">YouTube Data API v3 key</label><input id="apikey" placeholder="AIza…"></div>
         <div class="hint">Ключ хранится только в этом браузере. Бесплатно: 10 000 единиц в день, это около 90 поисков. Получить ключ: Google Cloud Console → APIs &amp; Services → включить «YouTube Data API v3» → Credentials → Create API key. Без ключа приложение покажет готовые ссылки на поиск в YouTube.</div>
       </div>
@@ -129,6 +139,7 @@ details summary{cursor:pointer;font-weight:700}
   </form>
 
   <section class="panel" id="history" hidden><h2>Недавние поиски</h2><div class="chips" id="histlist"></div></section>
+  <section class="panel" id="ai" hidden></section>
   <section class="panel" id="web" hidden></section>
   <section class="panel" id="summary" hidden></section>
   <section class="videos" id="videos"></section>
@@ -138,6 +149,11 @@ details summary{cursor:pointer;font-weight:700}
 const $ = id => document.getElementById(id);
 const store = { get(k){try{return localStorage.getItem(k)||""}catch(e){return ""}}, set(k,v){try{localStorage.setItem(k,v)}catch(e){}} };
 $("apikey").value = store.get("yt_key");
+// Адрес сервера сводки: из настроек или по умолчанию (заполняется после развёртывания сервера)
+const DEFAULT_AI_URL = "";
+$("aiurl").value = store.get("ai_url") || DEFAULT_AI_URL;
+$("aiurl").addEventListener("change", e => store.set("ai_url", e.target.value.trim()));
+let lastVideos = [];
 $("apikey").addEventListener("change", e => store.set("yt_key", e.target.value.trim()));
 
 // Частые симптомы: русский → английский, чтобы искать и в англоязычном YouTube
@@ -217,7 +233,7 @@ $("form").addEventListener("submit", async e => {
   const key = $("apikey").value.trim(); store.set("yt_key", key);
   saveHistory();
   const queries = buildQueries();
-  renderWeb();
+  renderWeb(); lastVideos = []; renderAiPrompt();
   if (!key) { renderLinksOnly(queries); return; }
   $("go").disabled = true; setStatus("Ищу на YouTube…");
   try {
@@ -234,6 +250,7 @@ $("form").addEventListener("submit", async e => {
     u2.searchParams.set("part","statistics,contentDetails"); u2.searchParams.set("id",[...all.keys()].join(",")); u2.searchParams.set("key",key);
     (await api(u2)).items.forEach(v => Object.assign(all.get(v.id), {stats:v.statistics, dur:v.contentDetails.duration}));
     const vids = rank([...all.values()]);
+    lastVideos = vids.slice(0, 15).map(v => ({title: v.title, channel: v.channelTitle, url: "https://www.youtube.com/watch?v=" + v.id}));
     renderSummary(vids, queries); renderVideos(vids); setStatus(`Найдено ${vids.length} видео`);
   } catch(err) {
     setStatus("Ошибка YouTube: " + err.message, true); renderLinksOnly(queries, true);
@@ -280,6 +297,46 @@ function renderSummary(vids, queries){
     ${top.length ? `<label>Чаще всего в названиях (возможные причины и детали)</label><div class="chips">${top.map(([w,n]) => `<span class="chip">${esc(w)}<b>${n}</b></span>`).join("")}</div>` : ""}
     ${topCh.length ? `<label style="margin-top:12px">Каналы, которые разбирали проблему</label><div class="chips">${topCh.map(([c,n]) => `<span class="chip">${esc(c)}<b>${n}</b></span>`).join("")}</div>` : ""}
     <div class="links" style="margin-top:12px">${queries.map(q => `<a target="_blank" rel="noopener" href="https://www.youtube.com/results?search_query=${encodeURIComponent(q.text)}">Открыть поиск на YouTube (${q.lang.toUpperCase()}) ↗</a>`).join("")}</div>`;
+}
+
+// ИИ-сводка: сервер ищет по форумам и бюллетеням и пишет вывод
+function renderAiPrompt(){
+  const a = $("ai"); a.hidden = false;
+  const url = $("aiurl").value.trim();
+  a.innerHTML = `<h2>ИИ-сводка</h2>
+    <p class="hint">ИИ прочитает форумы, бортжурналы, сервисные бюллетени и найденные видео и коротко ответит: вероятные причины, что проверить и примерная цена ремонта. Занимает 20–60 секунд.</p>
+    ${url ? `<button type="button" class="primary" id="aigo">Сделать ИИ-сводку</button>` : `<p class="hint">Сервер сводки ещё не подключён: укажите его адрес в настройках.</p>`}
+    <div id="aiout"></div>`;
+  if (url) $("aigo").addEventListener("click", runAi);
+}
+async function runAi(){
+  const btn = $("aigo"), out = $("aiout"); btn.disabled = true;
+  const t0 = Date.now(); const tick = setInterval(() => { btn.textContent = `Изучаю интернет… ${Math.round((Date.now()-t0)/1000)} с`; }, 1000);
+  btn.textContent = "Изучаю интернет…"; out.innerHTML = "";
+  try {
+    const r = await fetch($("aiurl").value.trim(), {method: "POST", headers: {"Content-Type": "application/json"},
+      body: JSON.stringify({make: $("make").value, model: $("model").value, year: $("year").value, problem: $("problem").value, videos: lastVideos})});
+    const d = await r.json().catch(() => ({error: "сервер вернул непонятный ответ"}));
+    if (!r.ok || d.error) throw new Error(d.error || ("код " + r.status));
+    out.innerHTML = renderAi(d); btn.hidden = true;
+  } catch(e) {
+    out.innerHTML = `<p class="status err">Не получилось: ${esc(e.message)}. Попробуйте ещё раз.</p>`;
+    btn.disabled = false; btn.textContent = "Сделать ИИ-сводку";
+  } finally { clearInterval(tick); }
+}
+function renderAi(d){
+  const urg = d.urgency || "";
+  const cls = /не ездить|опасно/i.test(urg) ? "bad" : /можно/i.test(urg) ? "ok" : "";
+  const list = a => Array.isArray(a) ? a : [];
+  return `${urg ? `<span class="ai-urg ${cls}">${esc(urg)}</span>` : ""}
+    <p>${esc(d.summary)}</p>
+    ${list(d.causes).length ? `<label>Вероятные причины</label><div class="causes">${list(d.causes).map(c => `<div class="cause">
+      <h3>${esc(c.cause)}<span class="lk">вероятность: ${esc(c.likelihood)}</span></h3>
+      ${c.check ? `<p><b>Как проверить:</b> ${esc(c.check)}</p>` : ""}${c.cost ? `<p><b>Стоимость:</b> ${esc(c.cost)}</p>` : ""}</div>`).join("")}</div>` : ""}
+    ${list(d.diy).length ? `<label>Что проверить самому</label><ol>${list(d.diy).map(x => `<li>${esc(x)}</li>`).join("")}</ol>` : ""}
+    ${d.recalls ? `<p><b>Отзывные кампании и бюллетени:</b> ${esc(d.recalls)}</p>` : ""}
+    ${list(d.sources).length ? `<label style="margin-top:10px">Источники</label><ul>${list(d.sources).filter(x => /^https?:/.test(x.url||"")).map(x => `<li><a target="_blank" rel="noopener" href="${esc(x.url)}">${esc(x.title || x.url)}</a></li>`).join("")}</ul>` : ""}
+    <p class="hint">Сводка составлена ИИ по открытым источникам и может ошибаться. Перед ремонтом проверьте диагноз у мастера.</p>`;
 }
 
 // Поиск по всему интернету: готовые запросы к поисковикам и автофорумам
