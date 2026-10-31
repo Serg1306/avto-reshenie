@@ -470,19 +470,32 @@ function buildQueries(){
 
 $("decode").addEventListener("click", async () => {
   const vin = $("vin").value.trim().toUpperCase().replace(/\s+/g, "");
-  if (!/^[A-HJ-NPR-Z0-9]{17}$/.test(vin)) { decodeFrame(vin); return; }
+  if (!/^[A-HJ-NPR-Z0-9]{17}$/.test(vin)) {
+    if (/^[A-Z0-9]{11,19}$/.test(vin) && vin.length !== 17 && !(findFrame(vin) || {found: []}).found.length) {
+      $("carinfo").hidden = true;
+      setStatus(`В VIN должно быть 17 символов, а здесь ${vin.length}. Проверьте, не пропущен ли символ (VIN есть в СТС и ПТС).`, true); return;
+    }
+    if (/[IOQ]/.test(vin) && vin.length === 17) { setStatus("В VIN не бывает букв I, O и Q: скорее всего, это цифры 1 и 0.", true); return; }
+    decodeFrame(vin); return;
+  }
   $("decode").disabled = true; setStatus("Расшифровываю VIN…");
+  const local = localVin(vin);
+  let d = {};
   try {
     const r = await fetch(`https://vpic.nhtsa.dot.gov/api/vehicles/DecodeVinValues/${vin}?format=json`);
-    const d = (await r.json()).Results[0];
-    if (!d.Make) throw new Error("База NHTSA не знает этот VIN");
-    $("make").value = cap(d.Make); $("model").value = d.Model || ""; $("year").value = d.ModelYear || "";
+    d = (await r.json()).Results[0] || {};
+  } catch(e) {}
+  const make = d.Make ? cap(d.Make) : local?.make, model = d.Model || local?.model || "", year = d.ModelYear || local?.year || "";
+  if (make) {
+    $("make").value = make; $("model").value = model; $("year").value = year;
     const extra = [d.DisplacementL && d.DisplacementL + " л", d.EngineModel, d.FuelTypePrimary, d.TransmissionStyle].filter(Boolean).join(" · ");
-    $("carinfo").textContent = `✓ ${cap(d.Make)} ${d.Model||""} ${d.ModelYear||""}${extra ? " — " + extra : ""}`;
-    $("carinfo").hidden = false; setStatus("");
-  } catch(e) {
-    setStatus("Не удалось расшифровать VIN (" + e.message + "). Введите марку, модель и год вручную. Европейские и японские VIN NHTSA знает не всегда.", true);
-  } finally { $("decode").disabled = false; }
+    $("carinfo").textContent = `✓ ${make} ${model} ${year}${extra ? " — " + extra : ""}` + (!d.Make ? ". Проверьте модель и год: для этой марки VIN расшифрован приблизительно." : "") + (!model ? " Модель впишите сами." : "");
+    $("carinfo").hidden = false; setStatus(""); markGarage();
+    if (!model) $("model").focus();
+  } else {
+    setStatus("Не удалось расшифровать этот VIN. Введите марку, модель и год вручную.", true);
+  }
+  $("decode").disabled = false;
 });
 // Номер кузова (Frame No.) у японских машин без VIN: модельный код до дефиса и заводской номер.
 // По модельному коду определяем марку, модель и годы выпуска поколения.
@@ -573,6 +586,51 @@ function findFrame(raw){
     if (found.length) return {code, found};
   }
   return {code: codes[0] || m[1], found: []};
+}
+
+// Своя расшифровка VIN, когда американская база NHTSA не знает машину (часто у европейских и российских сборок).
+// Марка по первым символам (WMI), год по 10-му символу, у Volkswagen/Audi/Skoda ещё модель по 7–8 символам.
+const WMI = {
+  WVW:"Volkswagen",WVG:"Volkswagen",WV1:"Volkswagen",WV2:"Volkswagen",XW8:"Volkswagen / Skoda",WAU:"Audi",WUA:"Audi",TRU:"Audi",
+  TMB:"Skoda",VSS:"Seat",WBA:"BMW",WBS:"BMW",WBX:"BMW",WBY:"BMW",X4X:"BMW",WMW:"Mini",WDB:"Mercedes-Benz",WDD:"Mercedes-Benz",
+  WDC:"Mercedes-Benz",WDF:"Mercedes-Benz",W1K:"Mercedes-Benz",W1N:"Mercedes-Benz",W1V:"Mercedes-Benz",WP0:"Porsche",WP1:"Porsche",
+  W0L:"Opel",W0V:"Opel",XUF:"Opel / Chevrolet",WF0:"Ford",X9F:"Ford",VF1:"Renault",X7L:"Renault",VF3:"Peugeot",VF7:"Citroen",
+  UU1:"Dacia",YV1:"Volvo",YV4:"Volvo",XW7:"Toyota",JTH:"Lexus",JN1:"Nissan",JN8:"Nissan",Z8N:"Nissan",JHM:"Honda",SHH:"Honda",
+  SHS:"Honda",JMZ:"Mazda",JM1:"Mazda",JMB:"Mitsubishi",JF1:"Subaru",JF2:"Subaru",JSA:"Suzuki",TSM:"Suzuki",KMH:"Hyundai",
+  Z94:"Hyundai / Kia",KNA:"Kia",KNE:"Kia",XWE:"Kia",KL1:"Chevrolet",XUU:"Chevrolet",KLA:"Daewoo",XTA:"Lada",XTT:"УАЗ",X9L:"Chevrolet Niva",X96:"ГАЗ",
+  SAL:"Land Rover",SAJ:"Jaguar",ZFA:"Fiat",ZAR:"Alfa Romeo",LVV:"Chery",LGW:"Haval",LLV:"Lifan",VF6:"Renault Trucks",SJN:"Nissan",
+  NMT:"Toyota",SB1:"Toyota",VNK:"Toyota",TMA:"Hyundai",MAL:"Hyundai",U5Y:"Kia",KMJ:"Hyundai",VWV:"Volkswagen",XWB:"Daewoo / Chevrolet",
+};
+const WMI2 = {JT:"Toyota",JN:"Nissan",JH:"Honda",JM:"Mazda",JA:"Mitsubishi",JF:"Subaru",JS:"Suzuki",KM:"Hyundai",KN:"Kia",VF:"Peugeot / Citroen / Renault",WB:"BMW",WD:"Mercedes-Benz",W1:"Mercedes-Benz",YV:"Volvo",ZF:"Fiat",SA:"Land Rover / Jaguar"};
+const VAG = {
+  Volkswagen:{"1J":"Golf IV / Bora","1K":"Golf V / Jetta","5K":"Golf VI","AU":"Golf VII","5G":"Golf VII","CD":"Golf VIII","3B":"Passat B5","3C":"Passat B6 / B7",
+    "3G":"Passat B8","6R":"Polo","61":"Polo","9N":"Polo IV","CK":"Polo","7L":"Touareg I","7P":"Touareg II","CR":"Touareg III","5N":"Tiguan I","AD":"Tiguan II",
+    "AX":"Tiguan II","7H":"Transporter T5","7J":"Transporter T5","7E":"Transporter T6","SG":"Transporter T6","2K":"Caddy","1T":"Touran","2H":"Amarok","16":"Jetta VI","BU":"Jetta VII",
+    "13":"Scirocco","5C":"Beetle","CA":"Teramont","1H":"Golf III / Vento","70":"Transporter T4"},
+  Audi:{"8L":"A3","8P":"A3","8V":"A3","8D":"A4 B5","8E":"A4 B6 / B7","8K":"A4 B8","8W":"A4 B9","4B":"A6 C5","4F":"A6 C6","4G":"A6 C7","4A":"A6 C8",
+    "4D":"A8 D2","4E":"A8 D3","4H":"A8 D4","4L":"Q7","4M":"Q7","8R":"Q5","FY":"Q5","8U":"Q3","F3":"Q3","8T":"A5","F5":"A5","4K":"A6 C8","8X":"A1"},
+  Skoda:{"1U":"Octavia I","1Z":"Octavia II","5E":"Octavia III","NX":"Octavia IV","3U":"Superb I","3T":"Superb II","3V":"Superb III","6Y":"Fabia I",
+    "5J":"Fabia II / Roomster","NJ":"Fabia III","NH":"Rapid","5L":"Yeti","NS":"Kodiaq","NU":"Karoq","PJ":"Fabia IV"},
+};
+function vinYear(c){
+  const order = "ABCDEFGHJKLMNPRSTVWXY123456789";
+  const i = order.indexOf(c); if (i < 0) return "";
+  let y = 1980 + i; const max = new Date().getFullYear() + 1;
+  while (y + 30 <= max) y += 30;
+  return String(y);
+}
+function localVin(vin){
+  const make = WMI[vin.slice(0,3)] || WMI2[vin.slice(0,2)] || "";
+  if (!make) return null;
+  const brand = make.split(" / ")[0];
+  const model = VAG[brand] ? VAG[brand][vin.slice(6,8)] || "" : (make.startsWith("Volkswagen") ? VAG.Volkswagen[vin.slice(6,8)] || VAG.Skoda[vin.slice(6,8)] || "" : "");
+  if (make === "Lada") {
+    const LADA = {"2104":"2104","2105":"2105","2106":"2106","2107":"2107","2108":"2108","2109":"2109","2110":"2110","2111":"2111","2112":"2112","2113":"Samara","2114":"Samara","2115":"Samara",
+      "2170":"Priora","2171":"Priora","2172":"Priora","1117":"Kalina","1118":"Kalina","1119":"Kalina","2192":"Kalina","2194":"Kalina","2190":"Granta","2191":"Granta",
+      "2121":"Niva Legend","2131":"Niva Legend","GFL":"Vesta","GFK":"Vesta","GAB":"XRAY","RS0":"Largus","KS0":"Largus"};
+    return {make, model: LADA[vin.slice(3,7)] || LADA[vin.slice(3,6)] || "", year: vinYear(vin[9])};
+  }
+  return {make: make.includes(" / ") && model ? (VAG.Skoda[vin.slice(6,8)] && !VAG.Volkswagen[vin.slice(6,8)] ? "Skoda" : brand) : make, model, year: vinYear(vin[9])};
 }
 
 // Нет VIN: пробуем как номер кузова японской машины
