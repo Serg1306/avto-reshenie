@@ -137,6 +137,12 @@ input[type=file]::file-selector-button{font:600 .9rem var(--body);color:var(--fg
 .estrow .c{grid-column:1/-1;color:var(--muted);font-size:.88rem}
 .estrow.h{font-weight:700;font-size:.78rem;text-transform:uppercase;letter-spacing:.06em;color:var(--muted)}
 .car{font-family:var(--mono);font-size:.9rem;color:var(--ok)}
+.towhead{display:flex;justify-content:space-between;align-items:flex-start;gap:12px;flex-wrap:wrap}
+.sos{flex:none;color:#fff;text-decoration:none;font-weight:800;border-radius:999px;padding:9px 16px;background:linear-gradient(180deg,#ff6b6b,#d63a3a);box-shadow:0 0 0 1px rgba(255,120,120,.4),0 6px 22px rgba(230,60,60,.4)}
+.towlinks{display:grid;gap:10px;grid-template-columns:repeat(auto-fit,minmax(180px,1fr))}
+.towlinks:empty{display:none}
+.towlinks a{display:flex;align-items:center;justify-content:center;gap:8px;text-align:center;text-decoration:none;color:var(--fg);font-weight:700;background:var(--chip);border:1px solid var(--line);border-radius:14px;padding:12px}
+.towlinks a:hover{border-color:var(--line-hi);box-shadow:0 0 18px rgba(60,130,255,.25)}
 [data-ai][hidden]{display:none!important}
 /* Появление блоков при прокрутке */
 .reveal{opacity:0;transform:translateY(28px) scale(.985);filter:blur(4px);transition:opacity .7s cubic-bezier(.2,.7,.2,1),transform .7s cubic-bezier(.2,.7,.2,1),filter .7s;transition-delay:var(--d,0s)}
@@ -153,6 +159,19 @@ input[type=file]::file-selector-button{font:600 .9rem var(--body);color:var(--fg
     <h1>Авто<span>Решение</span></h1>
   </header>
 
+  <section class="panel grid tow" id="tow">
+    <div class="towhead">
+      <div><h2 style="margin:0">Нужен эвакуатор?</h2>
+        <p class="hint" style="margin:4px 0 0">Найдём эвакуаторы рядом с вами на картах, с телефонами и отзывами.</p></div>
+      <a class="sos" href="tel:112">Авария? 112</a>
+    </div>
+    <div class="vinrow">
+      <div><label for="towcity">Где вы</label><input id="towcity" placeholder="Город или адрес, например: Казань"></div>
+      <button type="button" class="primary" id="towgeo">📍 Найти рядом со мной</button>
+    </div>
+    <div class="status" id="towstatus"></div>
+    <div class="towlinks" id="towlinks"></div>
+  </section>
   <form class="panel grid" id="form" autocomplete="off">
     <div id="garage"><label>Мой гараж</label>
       <div class="chips" id="cars"></div>
@@ -693,6 +712,43 @@ function dur(iso){ const m = /PT(?:(\d+)H)?(?:(\d+)M)?(?:(\d+)S)?/.exec(iso||"")
   return (h ? h + ":" + String(mi).padStart(2,"0") : mi) + ":" + String(s).padStart(2,"0"); }
 function unesc(s){ const t = document.createElement("textarea"); t.innerHTML = s || ""; return t.value; }
 function esc(s){ const d = document.createElement("div"); d.textContent = s || ""; return d.innerHTML.replace(/"/g,"&quot;"); }
+// Эвакуатор: поиск на картах рядом с пользователем (геолокация) или по введённому городу
+(function(){
+  const city = $("towcity"), links = $("towlinks"), st = $("towstatus");
+  city.value = store.get("tow_city") || $("city").value || "";
+  const q = "эвакуатор";
+  const render = (lat, lon) => {
+    const place = city.value.trim();
+    let ya, gis, g;
+    if (lat != null) {
+      ya = `https://yandex.ru/maps/?text=${encodeURIComponent(q)}&ll=${lon},${lat}&z=13`;
+      gis = `https://2gis.ru/search/${encodeURIComponent(q)}?m=${lon},${lat}/13`;
+      g = `https://www.google.com/maps/search/${encodeURIComponent(q)}/@${lat},${lon},13z`;
+    } else {
+      const t = q + " " + place;
+      ya = `https://yandex.ru/maps/?text=${encodeURIComponent(t)}`;
+      gis = `https://2gis.ru/search/${encodeURIComponent(t)}`;
+      g = `https://www.google.com/maps/search/${encodeURIComponent(t)}`;
+    }
+    links.innerHTML = `<a target="_blank" rel="noopener" href="${ya}">Яндекс Карты ↗</a>
+      <a target="_blank" rel="noopener" href="${gis}">2ГИС ↗</a>
+      <a target="_blank" rel="noopener" href="${g}">Google Карты ↗</a>`;
+  };
+  city.addEventListener("input", () => { store.set("tow_city", city.value.trim()); if (city.value.trim()) { st.textContent = ""; render(); } else links.innerHTML = ""; });
+  if (city.value.trim()) render();
+  $("towgeo").addEventListener("click", () => {
+    if (!navigator.geolocation) { st.textContent = "Браузер не умеет определять местоположение. Впишите город."; st.className = "status err"; return; }
+    st.className = "status"; st.textContent = "Определяю, где вы…";
+    navigator.geolocation.getCurrentPosition(p => {
+      st.textContent = "Нашёл вас. Откройте карту, там эвакуаторы рядом с телефонами:";
+      render(p.coords.latitude.toFixed(5), p.coords.longitude.toFixed(5));
+    }, () => {
+      st.className = "status err";
+      st.textContent = city.value.trim() ? "Не удалось определить местоположение, ищу по городу." : "Не удалось определить местоположение. Разрешите доступ к геопозиции или впишите город.";
+      if (city.value.trim()) render();
+    }, {enableHighAccuracy: true, timeout: 10000, maximumAge: 300000});
+  });
+})();
 // Анимация при прокрутке: блоки плавно появляются, когда попадают в экран.
 // Новые блоки (результаты поиска, видео) подхватываются автоматически.
 (function(){
