@@ -139,9 +139,10 @@ input[type=file]::file-selector-button{font:600 .9rem var(--body);color:var(--fg
 .car{font-family:var(--mono);font-size:.9rem;color:var(--ok)}
 .towhead{display:flex;justify-content:space-between;align-items:flex-start;gap:12px;flex-wrap:wrap}
 .sos{flex:none;color:#fff;text-decoration:none;font-weight:800;border-radius:999px;padding:9px 16px;background:linear-gradient(180deg,#ff6b6b,#d63a3a);box-shadow:0 0 0 1px rgba(255,120,120,.4),0 6px 22px rgba(230,60,60,.4)}
-.towlinks{display:grid;gap:10px;grid-template-columns:repeat(auto-fit,minmax(180px,1fr))}
-.towlinks:empty{display:none}
-.towlinks a{display:flex;align-items:center;justify-content:center;gap:8px;text-align:center;text-decoration:none;color:var(--fg);font-weight:700;background:var(--chip);border:1px solid var(--line);border-radius:14px;padding:12px}
+.towlinks{display:grid;gap:8px;grid-template-columns:repeat(3,1fr)}
+#towlinks:empty{display:none}
+.towgroup b{display:block;margin-bottom:8px}
+.towlinks a{display:flex;align-items:center;justify-content:center;gap:8px;text-align:center;text-decoration:none;color:var(--fg);font-weight:700;background:var(--chip);border:1px solid var(--line);border-radius:14px;padding:10px 6px;font-size:.92rem}
 .towlinks a:hover{border-color:var(--line-hi);box-shadow:0 0 18px rgba(60,130,255,.25)}
 [data-ai][hidden]{display:none!important}
 /* Появление блоков при прокрутке */
@@ -161,8 +162,8 @@ input[type=file]::file-selector-button{font:600 .9rem var(--body);color:var(--fg
 
   <section class="panel grid tow" id="tow">
     <div class="towhead">
-      <div><h2 style="margin:0">Нужен эвакуатор?</h2>
-        <p class="hint" style="margin:4px 0 0">Найдём эвакуаторы рядом с вами на картах, с телефонами и отзывами.</p></div>
+      <div><h2 style="margin:0">Помощь рядом</h2>
+        <p class="hint" style="margin:4px 0 0">Эвакуаторы и автосервисы рядом с вами на картах, с телефонами, часами работы и отзывами.</p></div>
       <a class="sos" href="tel:112">Авария? 112</a>
     </div>
     <div class="vinrow">
@@ -170,7 +171,7 @@ input[type=file]::file-selector-button{font:600 .9rem var(--body);color:var(--fg
       <button type="button" class="primary" id="towgeo">📍 Найти рядом со мной</button>
     </div>
     <div class="status" id="towstatus"></div>
-    <div class="towlinks" id="towlinks"></div>
+    <div class="grid" id="towlinks"></div>
   </section>
   <form class="panel grid" id="form" autocomplete="off">
     <div id="garage"><label>Мой гараж</label>
@@ -716,8 +717,16 @@ function esc(s){ const d = document.createElement("div"); d.textContent = s || "
 (function(){
   const city = $("towcity"), links = $("towlinks"), st = $("towstatus");
   city.value = store.get("tow_city") || $("city").value || "";
-  const q = "эвакуатор";
+  let geo = [];
+  $("make").addEventListener("input", () => { if (links.innerHTML) render(...geo); });
   const render = (lat, lon) => {
+    geo = lat != null ? [lat, lon] : [];
+    const make = $("make").value.trim();
+    links.innerHTML = [["🚚 Эвакуатор", "эвакуатор"], ["🔧 Автосервис", "автосервис"]]
+      .concat(make ? [[`🔧 Сервис ${esc(make)}`, "автосервис " + make]] : [])
+      .map(([title, q]) => `<div class="towgroup"><b>${title}</b><div class="towlinks">${mapLinks(q, lat, lon)}</div></div>`).join("");
+  };
+  const mapLinks = (q, lat, lon) => {
     const place = city.value.trim();
     let ya, gis, g;
     if (lat != null) {
@@ -730,9 +739,9 @@ function esc(s){ const d = document.createElement("div"); d.textContent = s || "
       gis = `https://2gis.ru/search/${encodeURIComponent(t)}`;
       g = `https://www.google.com/maps/search/${encodeURIComponent(t)}`;
     }
-    links.innerHTML = `<a target="_blank" rel="noopener" href="${ya}">Яндекс Карты ↗</a>
+    return `<a target="_blank" rel="noopener" href="${ya}">Яндекс ↗</a>
       <a target="_blank" rel="noopener" href="${gis}">2ГИС ↗</a>
-      <a target="_blank" rel="noopener" href="${g}">Google Карты ↗</a>`;
+      <a target="_blank" rel="noopener" href="${g}">Google ↗</a>`;
   };
   city.addEventListener("input", () => { store.set("tow_city", city.value.trim()); if (city.value.trim()) { st.textContent = ""; render(); } else links.innerHTML = ""; });
   if (city.value.trim()) render();
@@ -740,7 +749,7 @@ function esc(s){ const d = document.createElement("div"); d.textContent = s || "
     if (!navigator.geolocation) { st.textContent = "Браузер не умеет определять местоположение. Впишите город."; st.className = "status err"; return; }
     st.className = "status"; st.textContent = "Определяю, где вы…";
     navigator.geolocation.getCurrentPosition(p => {
-      st.textContent = "Нашёл вас. Откройте карту, там эвакуаторы рядом с телефонами:";
+      st.textContent = "Нашёл вас. Откройте карту, там всё рядом с телефонами:";
       render(p.coords.latitude.toFixed(5), p.coords.longitude.toFixed(5));
     }, () => {
       st.className = "status err";
