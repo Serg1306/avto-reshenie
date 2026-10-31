@@ -202,6 +202,26 @@ $("aiurl").addEventListener("change", e => store.set("ai_url", e.target.value.tr
 let lastVideos = [];
 const getJSON = (k, d) => { try { return JSON.parse(store.get(k) || "") ?? d; } catch(e) { return d; } };
 const setJSON = (k, v) => store.set(k, JSON.stringify(v));
+// Случайный id устройства: по нему сервер считает бесплатные попытки
+function deviceId(){ let id = store.get("device_id"); if (!id) { id = (crypto.randomUUID ? crypto.randomUUID() : String(Math.random()).slice(2) + Date.now()); store.set("device_id", id); } return id; }
+function aiFetch(body){
+  return fetch($("aiurl").value.trim(), {method: "POST", headers: {"Content-Type": "application/json", "X-Device-Id": deviceId()}, body: JSON.stringify(body)});
+}
+function remainingNote(r){
+  const n = r.headers.get("X-Remaining");
+  return n === null ? "" : `<p class="hint">Бесплатных ИИ-попыток осталось: ${esc(n)}.</p>`;
+}
+// Ответ сервера: при исчерпании бесплатных попыток показываем предложение подписки
+async function aiResult(r){
+  const d = await r.json().catch(() => ({error: "сервер вернул непонятный ответ"}));
+  if (d.paywall) { const e = new Error(d.error); e.paywall = true; throw e; }
+  if (!r.ok || d.error) throw new Error(d.error || ("код " + r.status));
+  return d;
+}
+function paywallHtml(msg){
+  return `<div class="cause"><h3>Бесплатные попытки закончились</h3><p>${esc(msg)}</p>
+    <p class="hint">Подписка скоро появится. Пока можно задать тот же вопрос в Claude бесплатно: <a target="_blank" rel="noopener" href="${claudeLink()}">открыть в Claude ↗</a></p></div>`;
+}
 
 // Частые коды ошибок OBD-II (общие для всех марок). Остальные расшифрует ИИ.
 const OBD = {
@@ -474,13 +494,12 @@ async function runAi(){
   const t0 = Date.now(); const tick = setInterval(() => { btn.textContent = `Изучаю интернет… ${Math.round((Date.now()-t0)/1000)} с`; }, 1000);
   btn.textContent = "Изучаю интернет…"; out.innerHTML = "";
   try {
-    const r = await fetch($("aiurl").value.trim(), {method: "POST", headers: {"Content-Type": "application/json"},
-      body: JSON.stringify({make: $("make").value, model: $("model").value, year: $("year").value, city: $("city").value,
-        problem: [$("problem").value.trim(), soundText()].filter(Boolean).join(", "), codes: parseCodes(), images: toImages(photoCache.photos), videos: lastVideos})});
-    const d = await r.json().catch(() => ({error: "сервер вернул непонятный ответ"}));
-    if (!r.ok || d.error) throw new Error(d.error || ("код " + r.status));
-    out.innerHTML = renderAi(d); btn.hidden = true; saveSummary(d);
+    const r = await aiFetch({make: $("make").value, model: $("model").value, year: $("year").value, city: $("city").value,
+        problem: [$("problem").value.trim(), soundText()].filter(Boolean).join(", "), codes: parseCodes(), images: toImages(photoCache.photos), videos: lastVideos});
+    const d = await aiResult(r);
+    out.innerHTML = renderAi(d) + remainingNote(r); btn.hidden = true; saveSummary(d);
   } catch(e) {
+    if (e.paywall) { out.innerHTML = paywallHtml(e.message); btn.hidden = true; return; }
     out.innerHTML = `<p class="status err">Не получилось: ${esc(e.message)}. Попробуйте ещё раз.</p>`;
     btn.disabled = false; btn.textContent = "Сделать ИИ-сводку";
   } finally { clearInterval(tick); }
@@ -514,13 +533,14 @@ $("estgo").addEventListener("click", async () => {
   }
   const btn = $("estgo"); btn.disabled = true; st.textContent = "Сравниваю цены… это 20–60 секунд"; $("estout").innerHTML = "";
   try {
-    const r = await fetch(url, {method: "POST", headers: {"Content-Type": "application/json"},
-      body: JSON.stringify({mode: "estimate", make: $("make").value, model: $("model").value, year: $("year").value, city: $("city").value,
-        problem: $("problem").value, estimate: text, images: toImages(photos)})});
-    const d = await r.json().catch(() => ({error: "сервер вернул непонятный ответ"}));
-    if (!r.ok || d.error) throw new Error(d.error || ("код " + r.status));
-    $("estout").innerHTML = renderEstimate(d); st.textContent = "";
-  } catch(e) { st.textContent = "Не получилось: " + e.message; st.className = "status err"; }
+    const r = await aiFetch({mode: "estimate", make: $("make").value, model: $("model").value, year: $("year").value, city: $("city").value,
+        problem: $("problem").value, estimate: text, images: toImages(photos)});
+    const d = await aiResult(r);
+    $("estout").innerHTML = renderEstimate(d) + remainingNote(r); st.textContent = "";
+  } catch(e) {
+    if (e.paywall) { $("estout").innerHTML = paywallHtml(e.message); st.textContent = ""; }
+    else { st.textContent = "Не получилось: " + e.message; st.className = "status err"; }
+  }
   finally { btn.disabled = false; }
 });
 function renderEstimate(d){

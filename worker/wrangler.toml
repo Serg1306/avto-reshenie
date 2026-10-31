@@ -5,3 +5,15 @@ compatibility_flags = ["nodejs_compat"]
 
 [vars]
 ALLOWED_ORIGINS = "https://serg1306.github.io"
+# Бесплатные ИИ-запросы: с одного устройства за всё время; с одного IP и всего на сервис — в день
+FREE_PER_DEVICE = "3"
+LIMIT_PER_IP = "15"
+LIMIT_TOTAL = "100"
+
+[[durable_objects.bindings]]
+name = "LIMITER"
+class_name = "Limiter"
+
+[[migrations]]
+tag = "v1"
+new_sqlite_classes = ["Limiter"]

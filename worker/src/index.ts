@@ -5,12 +5,23 @@
 //  - "estimate": смета или счёт автосервиса (текст и/или фото) → сравнение с типичными ценами.
 // Поиск в интернете делает встроенный веб-поиск Claude, ответ приходит в JSON на русском.
 import Anthropic from "@anthropic-ai/sdk";
+import { Limiter, type Limit } from "./limiter";
+
+export { Limiter };
 
 export interface Env {
   ANTHROPIC_API_KEY: string; // секрет: wrangler secret put ANTHROPIC_API_KEY
   ALLOWED_ORIGINS: string; // через запятую, например https://serg1306.github.io
   ANTHROPIC_BASE_URL?: string; // только для локальных тестов
+  LIMITER: DurableObjectNamespace<Limiter>;
+  FREE_PER_DEVICE?: string; // бесплатных запросов с одного устройства за всё время
+  LIMIT_PER_IP?: string; // в день с одного IP (защита от подмены id устройства)
+  LIMIT_TOTAL?: string; // всего в день на весь сервис (потолок расходов)
 }
+
+const num = (v: string | undefined, d: number) => (v && /^\d+$/.test(v) ? parseInt(v, 10) : d);
+// День считаем по московскому времени, чтобы лимит обновлялся в полночь по Москве
+const today = () => new Date(Date.now() + 3 * 3600 * 1000).toISOString().slice(0, 10);
 
 interface ImageIn {
   media_type: string;
@@ -80,7 +91,8 @@ function cors(origin: string | null, env: Env): Record<string, string> {
   return {
     "Access-Control-Allow-Origin": ok ? origin : allowed[0] || "",
     "Access-Control-Allow-Methods": "POST, OPTIONS",
-    "Access-Control-Allow-Headers": "Content-Type",
+    "Access-Control-Allow-Headers": "Content-Type, X-Device-Id",
+    "Access-Control-Expose-Headers": "X-Remaining",
     Vary: "Origin",
   };
 }
@@ -191,14 +203,39 @@ export default {
         (estimate ? `\n\nСмета:\n${estimate}` : "\n\nСмета на фото.");
     }
 
+    // Лимиты: бесплатные попытки устройства (за всё время), IP в день и общий дневной потолок
+    const device = clean(request.headers.get("X-Device-Id"), 64).replace(/[^A-Za-z0-9-]/g, "");
+    const ip = request.headers.get("CF-Connecting-IP") || "unknown";
+    const free = num(env.FREE_PER_DEVICE, 3);
+    const limits: Limit[] = [
+      { key: "device:" + (device || "ip-" + ip), max: free, lifetime: true },
+      { key: "ip:" + ip, max: num(env.LIMIT_PER_IP, 15) },
+      { key: "total", max: num(env.LIMIT_TOTAL, 100) },
+    ];
+    const day = today();
+    const limiter = env.LIMITER.get(env.LIMITER.idFromName("global"));
+    const taken = await limiter.take(day, limits);
+    if (!taken.ok) {
+      const msg = taken.blocked === "total"
+        ? "Сегодня сервис исчерпал дневной запас ИИ-запросов. Попробуйте завтра."
+        : taken.blocked === "ip"
+          ? "Слишком много запросов с вашей сети сегодня. Попробуйте завтра."
+          : `Бесплатные попытки закончились (${free} из ${free}). Дальше ИИ-сводка доступна по подписке.`;
+      return json({ error: msg, limit: true, paywall: taken.blocked === "device" }, 429, { ...headers, "X-Remaining": "0" });
+    }
+    const limitHeaders = { ...headers, "X-Remaining": String(taken.remaining) };
+    const refund = () => limiter.refund(day, limits);
+
     const client = new Anthropic({ apiKey: env.ANTHROPIC_API_KEY, baseURL: env.ANTHROPIC_BASE_URL || undefined });
     try {
       const out = await askClaude(client, system, [...images, { type: "text", text }]);
       if (out.refused) {
-        return json({ error: "ИИ не смог ответить на этот запрос. Попробуйте описать иначе." }, 422, headers);
+        await refund();
+        return json({ error: "ИИ не смог ответить на этот запрос. Попробуйте описать иначе." }, 422, limitHeaders);
       }
-      return json({ mode, ...out.result }, 200, headers);
+      return json({ mode, ...out.result, remaining: taken.remaining }, 200, limitHeaders);
     } catch (err) {
+      await refund();
       if (err instanceof Anthropic.RateLimitError) {
         return json({ error: "Слишком много запросов, попробуйте через минуту" }, 429, headers);
       }
