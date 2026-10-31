@@ -136,7 +136,8 @@ input[type=file]::file-selector-button{font:600 .9rem var(--body);color:var(--fg
 .estrow>div{min-width:0}
 .estrow .c{grid-column:1/-1;color:var(--muted);font-size:.88rem}
 .estrow.h{font-weight:700;font-size:.78rem;text-transform:uppercase;letter-spacing:.06em;color:var(--muted)}
-.car{font-family:var(--mono);font-size:.9rem;color:var(--ok)}
+.car{font-size:.92rem;color:var(--ok)}
+.car .chip{color:var(--fg)}
 .towhead{display:flex;justify-content:space-between;align-items:flex-start;gap:12px;flex-wrap:wrap}
 .sos{flex:none;color:#fff;text-decoration:none;font-weight:800;border-radius:999px;padding:9px 16px;background:linear-gradient(180deg,#ff6b6b,#d63a3a);box-shadow:0 0 0 1px rgba(255,120,120,.4),0 6px 22px rgba(230,60,60,.4)}
 .towlinks{display:grid;gap:8px;grid-template-columns:repeat(3,1fr)}
@@ -178,9 +179,9 @@ input[type=file]::file-selector-button{font:600 .9rem var(--body);color:var(--fg
       <div class="chips" id="cars"></div>
       <span class="hint" id="nocars">Сохраните машину, чтобы не вводить её каждый раз.</span></div>
     <div class="vinrow">
-      <div><label for="vin">VIN-код (17 символов)</label>
-        <input id="vin" maxlength="17" placeholder="например, JTDBR32E720123456"></div>
-      <button type="button" class="ghost" id="decode">Расшифровать VIN</button>
+      <div><label for="vin">VIN-код или номер кузова</label>
+        <input id="vin" maxlength="20" placeholder="JTDBR32E720123456 или NZE121-0123456"></div>
+      <button type="button" class="ghost" id="decode">Расшифровать</button>
     </div>
     <div class="car" id="carinfo" hidden></div>
     <div class="or">или вручную</div>
@@ -468,8 +469,8 @@ function buildQueries(){
 }
 
 $("decode").addEventListener("click", async () => {
-  const vin = $("vin").value.trim().toUpperCase();
-  if (!/^[A-HJ-NPR-Z0-9]{17}$/.test(vin)) { setStatus("VIN должен содержать 17 символов, без букв I, O и Q.", true); return; }
+  const vin = $("vin").value.trim().toUpperCase().replace(/\s+/g, "");
+  if (!/^[A-HJ-NPR-Z0-9]{17}$/.test(vin)) { decodeFrame(vin); return; }
   $("decode").disabled = true; setStatus("Расшифровываю VIN…");
   try {
     const r = await fetch(`https://vpic.nhtsa.dot.gov/api/vehicles/DecodeVinValues/${vin}?format=json`);
@@ -483,6 +484,114 @@ $("decode").addEventListener("click", async () => {
     setStatus("Не удалось расшифровать VIN (" + e.message + "). Введите марку, модель и год вручную. Европейские и японские VIN NHTSA знает не всегда.", true);
   } finally { $("decode").disabled = false; }
 });
+// Номер кузова (Frame No.) у японских машин без VIN: модельный код до дефиса и заводской номер.
+// По модельному коду определяем марку, модель и годы выпуска поколения.
+const FRAMES = [
+  // Toyota
+  [/^AE10\d$/,"Toyota","Corolla","1991–1995"],[/^(AE|CE|EE)11\d$/,"Toyota","Corolla","1995–2000"],
+  [/^(NZE|ZZE|CE)12\d$/,"Toyota","Corolla","2000–2006"],[/^(NZE|ZRE)14\d$/,"Toyota","Corolla Axio / Fielder","2006–2012"],
+  [/^(NZE|NRE|ZRE|NKE)16\d$/,"Toyota","Corolla Axio / Fielder","2012–2019"],[/^ZRE15\d$/,"Toyota","Corolla","2006–2013"],
+  [/^(ZRE|NRE)18\d$/,"Toyota","Corolla / Auris","2012–2018"],[/^NHW1\d$/,"Toyota","Prius","1997–2003"],
+  [/^NHW20$/,"Toyota","Prius","2003–2009"],[/^ZVW3\d$/,"Toyota","Prius","2009–2015"],[/^ZVW5\d$/,"Toyota","Prius","2015–2022"],
+  [/^(ACV|MCV)3\d$/,"Toyota","Camry","2001–2006"],[/^(ACV|AHV)4\d$/,"Toyota","Camry","2006–2011"],
+  [/^(ASV|AVV|GSV)5\d$/,"Toyota","Camry","2011–2017"],[/^(AXVH|ASV|GSV)7\d$/,"Toyota","Camry","2017–2023"],
+  [/^(GX|JZX|LX|SX)9\d$/,"Toyota","Mark II","1992–1996"],[/^(GX|JZX|LX)10\d$/,"Toyota","Mark II","1996–2000"],
+  [/^(GX|JZX)11\d$/,"Toyota","Mark II","2000–2004"],[/^GRX12\d$/,"Toyota","Mark X","2004–2009"],[/^GRX13\d$/,"Toyota","Mark X","2009–2019"],
+  [/^JZS1[45]\d$/,"Toyota","Crown","1995–1999"],[/^(JZS|GS)17\d$/,"Toyota","Crown","1999–2003"],[/^(GRS|UZS)18\d$/,"Toyota","Crown","2003–2008"],
+  [/^(GRS|GWS)20\d$/,"Toyota","Crown","2008–2012"],[/^(GRS|AWS|ARS)21\d$/,"Toyota","Crown","2012–2018"],
+  [/^SXA1\d$/,"Toyota","RAV4","1994–2000"],[/^(ACA|ZCA)2\d$/,"Toyota","RAV4","2000–2005"],[/^(ACA|GSA)3\d$/,"Toyota","RAV4","2005–2012"],
+  [/^(ZSA|ALA|ASA|AVA)4\d$/,"Toyota","RAV4","2012–2018"],
+  [/^(KZJ|RZJ|VZJ)9\d$/,"Toyota","Land Cruiser Prado","1996–2002"],[/^(GRJ|KDJ|RZJ|TRJ|VZJ)12\d$/,"Toyota","Land Cruiser Prado","2002–2009"],
+  [/^(GRJ|TRJ|KDJ|GDJ)15\d$/,"Toyota","Land Cruiser Prado","2009–2023"],[/^(UZJ|HDJ|FZJ)10\d$/,"Toyota","Land Cruiser 100","1998–2007"],
+  [/^(UZJ|URJ|VDJ)20\d$/,"Toyota","Land Cruiser 200","2007–2021"],
+  [/^(SCP|NCP|KSP)1\d$/,"Toyota","Vitz","1999–2005"],[/^(KSP|NCP|SCP)9\d$/,"Toyota","Vitz","2005–2010"],[/^(KSP|NSP|NCP|NHP)13\d$/,"Toyota","Vitz","2010–2020"],
+  [/^(AZR|AZR)6\d$/,"Toyota","Noah / Voxy","2001–2007"],[/^ZRR7\d$/,"Toyota","Noah / Voxy","2007–2014"],[/^(ZRR|ZWR)8\d$/,"Toyota","Noah / Voxy","2014–2021"],
+  [/^(ACR|MCR)3\d$/,"Toyota","Estima","2000–2006"],[/^(ACR|GSR|AHR)5\d$/,"Toyota","Estima","2006–2019"],
+  [/^(ANH|MNH)1\d$/,"Toyota","Alphard","2002–2008"],[/^(ANH|GGH|ATH)2\d$/,"Toyota","Alphard / Vellfire","2008–2015"],[/^(AGH|GGH|AYH)3\d$/,"Toyota","Alphard / Vellfire","2015–2023"],
+  [/^(SXU|MCU)1\d$/,"Toyota","Harrier","1997–2003"],[/^(ACU|MCU|GSU|MHU)3\d$/,"Toyota","Harrier","2003–2013"],[/^(ZSU|AVU|ASU)6\d$/,"Toyota","Harrier","2013–2020"],
+  [/^(ACU|MCU)2\d$/,"Toyota","Kluger","2000–2007"],[/^(ZNE|ANE)1\d$/,"Toyota","Wish","2003–2009"],[/^(ZGE)2\d$/,"Toyota","Wish","2009–2017"],
+  [/^(ZZT|NZT|AZT)24\d$/,"Toyota","Premio / Allion","2001–2007"],[/^(NZT|ZRT|ZZT|NRT)26\d$/,"Toyota","Premio / Allion","2007–2021"],
+  [/^(AT|ST|CT)21\d$/,"Toyota","Carina / Corona Premio","1996–2001"],[/^(NCP|SCP)10\d$/,"Toyota","Ractis","2005–2010"],[/^(NCP|NSP)12\d$/,"Toyota","Ractis","2010–2016"],
+  [/^(NCP|NLP)5\d$/,"Toyota","Probox / Succeed","2002–2014"],[/^(NCP|NHP|NSP)16\d$/,"Toyota","Probox / Succeed","2014–"],
+  [/^(SXM|CXM)1\d$/,"Toyota","Ipsum","1996–2001"],[/^(ACM)2\d$/,"Toyota","Ipsum","2001–2009"],
+  [/^(TRH|KDH|GDH)2\d\d$/,"Toyota","Hiace","2004–"],[/^(ZRE|NZE)17\d$/,"Toyota","Corolla (Китай/Азия)","2013–2019"],
+  // Nissan
+  [/^[A-Z]*B15$/,"Nissan","Sunny","1998–2004"],[/^[A-Z]*Y11$/,"Nissan","Wingroad / AD","1999–2005"],[/^[A-Z]*Y12$/,"Nissan","Wingroad / AD","2005–2018"],
+  [/^[A-Z]*G10$/,"Nissan","Bluebird Sylphy","2000–2005"],[/^[A-Z]*G11$/,"Nissan","Bluebird Sylphy","2005–2012"],[/^[A-Z]*U14$/,"Nissan","Bluebird","1996–2001"],
+  [/^[A-Z]*N16$/,"Nissan","Almera","2000–2006"],[/^[A-Z]*E11$/,"Nissan","Note","2005–2012"],[/^[A-Z]*E12$/,"Nissan","Note","2012–2020"],
+  [/^[A-Z]*K11$/,"Nissan","March","1992–2002"],[/^[A-Z]*K12$/,"Nissan","March","2002–2010"],[/^[A-Z]*K13$/,"Nissan","March","2010–2022"],
+  [/^[A-Z]*C11$/,"Nissan","Tiida","2004–2012"],[/^[A-Z]*Z11$/,"Nissan","Cube","2002–2008"],[/^[A-Z]*Z12$/,"Nissan","Cube","2008–2019"],
+  [/^[A-Z]*T30$/,"Nissan","X-Trail","2000–2007"],[/^[A-Z]*T31$/,"Nissan","X-Trail","2007–2013"],[/^[A-Z]*T32$/,"Nissan","X-Trail","2013–2022"],
+  [/^[A-Z]*J10$/,"Nissan","Qashqai / Dualis","2006–2013"],[/^[A-Z]*J11$/,"Nissan","Qashqai","2013–2021"],
+  [/^[A-Z]*C24$/,"Nissan","Serena","2001–2005"],[/^[A-Z]*C25$/,"Nissan","Serena","2005–2010"],[/^[A-Z]*C26$/,"Nissan","Serena","2010–2016"],[/^[A-Z]*C27$/,"Nissan","Serena","2016–2022"],
+  [/^[A-Z]*A33$/,"Nissan","Cefiro","1998–2003"],[/^[A-Z]*J31$/,"Nissan","Teana","2003–2008"],[/^[A-Z]*J32$/,"Nissan","Teana","2008–2014"],[/^[A-Z]*L33$/,"Nissan","Teana","2014–2020"],
+  [/^[A-Z]*R33$/,"Nissan","Skyline","1993–1998"],[/^[A-Z]*R34$/,"Nissan","Skyline","1998–2002"],[/^[A-Z]*V35$/,"Nissan","Skyline","2001–2007"],[/^[A-Z]*V36$/,"Nissan","Skyline","2006–2014"],
+  [/^[A-Z]*Y34$/,"Nissan","Cedric / Gloria","1999–2004"],[/^[A-Z]*Y50$/,"Nissan","Fuga","2004–2009"],[/^[A-Z]*Y51$/,"Nissan","Fuga","2009–2022"],
+  [/^[A-Z]*F15$/,"Nissan","Juke","2010–2019"],[/^[A-Z]*E51$/,"Nissan","Elgrand","2002–2010"],[/^[A-Z]*E52$/,"Nissan","Elgrand","2010–"],
+  [/^[A-Z]*Z50$/,"Nissan","Murano","2002–2008"],[/^[A-Z]*Z51$/,"Nissan","Murano","2008–2014"],[/^[A-Z]*R51$/,"Nissan","Pathfinder","2004–2014"],
+  [/^[A-Z]*U30$/,"Nissan","Presage","1998–2003"],[/^[A-Z]*U31$/,"Nissan","Presage","2003–2009"],[/^[A-Z]*B17$/,"Nissan","Sylphy","2012–2020"],[/^[A-Z]*N17$/,"Nissan","Latio / Almera","2012–2018"],
+  // Honda
+  [/^GD[1-4]$/,"Honda","Fit","2001–2007"],[/^GE[6-9]$/,"Honda","Fit","2007–2013"],[/^GP[1-4]$/,"Honda","Fit Hybrid","2010–2013"],
+  [/^GK[3-6]$/,"Honda","Fit","2013–2020"],[/^GP[56]$/,"Honda","Fit Hybrid","2013–2020"],[/^G[GP][7-9]$/,"Honda","Fit Shuttle","2011–2015"],
+  [/^RD[1-3]$/,"Honda","CR-V","1995–2001"],[/^RD[4-7]$/,"Honda","CR-V","2001–2006"],[/^RE[3-7]$/,"Honda","CR-V","2006–2011"],[/^RM[1-4]$/,"Honda","CR-V","2011–2016"],[/^RW[12]$/,"Honda","CR-V","2016–2022"],
+  [/^RA[1-5]$/,"Honda","Odyssey","1994–1999"],[/^RA[6-9]$/,"Honda","Odyssey","1999–2003"],[/^RB[12]$/,"Honda","Odyssey","2003–2008"],[/^RB[34]$/,"Honda","Odyssey","2008–2013"],[/^RC[1-4]$/,"Honda","Odyssey","2013–2022"],
+  [/^RF[1-8]$/,"Honda","Stepwgn","1996–2005"],[/^RG[1-4]$/,"Honda","Stepwgn","2005–2009"],[/^RK[1-7]$/,"Honda","Stepwgn","2009–2015"],[/^RP[1-5]$/,"Honda","Stepwgn","2015–2022"],
+  [/^GB[12]$/,"Honda","Mobilio","2001–2008"],[/^GB[34]$/,"Honda","Freed","2008–2016"],[/^GB[5-8]$/,"Honda","Freed","2016–"],
+  [/^CF[3-6]$/,"Honda","Accord","1997–2002"],[/^CL[7-9]$/,"Honda","Accord","2002–2008"],[/^CU[12]$/,"Honda","Accord","2008–2013"],
+  [/^EK[2-9]$/,"Honda","Civic","1995–2000"],[/^E[SU][1-4]$/,"Honda","Civic / Civic Ferio","2000–2005"],[/^FD[1-3]$/,"Honda","Civic","2005–2011"],
+  [/^ZE2$/,"Honda","Insight","2009–2014"],[/^RU[1-4]$/,"Honda","Vezel","2013–2021"],[/^RN[1-5]$/,"Honda","Stream","2000–2006"],[/^RN[6-9]$/,"Honda","Stream","2006–2014"],
+  [/^RR[1-6]$/,"Honda","Elysion","2004–2013"],[/^JF[12]$/,"Honda","N-Box","2011–2017"],
+  // Mazda
+  [/^DW\w+$/,"Mazda","Demio","1996–2002"],[/^DY\w+$/,"Mazda","Demio","2002–2007"],[/^DE\w+$/,"Mazda","Demio","2007–2014"],[/^DJ\w+$/,"Mazda","Demio (Mazda2)","2014–"],
+  [/^BJ\w+$/,"Mazda","Familia","1998–2004"],[/^BK\w+$/,"Mazda","Axela (Mazda3)","2003–2009"],[/^BL\w{2,}$/,"Mazda","Axela (Mazda3)","2009–2013"],[/^BM\w{2,}$/,"Mazda","Axela (Mazda3)","2013–2019"],
+  [/^G[GY]\w{2,}$/,"Mazda","Atenza (Mazda6)","2002–2008"],[/^GH\w{2,}$/,"Mazda","Atenza (Mazda6)","2007–2012"],[/^GJ\w+$/,"Mazda","Atenza (Mazda6)","2012–"],
+  [/^CP\w+$/,"Mazda","Premacy","1999–2005"],[/^CR\w+$/,"Mazda","Premacy","2005–2010"],[/^CW\w+$/,"Mazda","Premacy","2010–2018"],
+  [/^KE\w+$/,"Mazda","CX-5","2012–2017"],[/^KF\w+$/,"Mazda","CX-5","2017–"],[/^LW\w+$/,"Mazda","MPV","1999–2006"],[/^LY\w+$/,"Mazda","MPV","2006–2016"],[/^EP\w+$/,"Mazda","Tribute","2000–2006"],
+  // Mitsubishi
+  [/^CS\dA$|^CS\dW$/,"Mitsubishi","Lancer Cedia","2000–2007"],[/^CY\dA$/,"Mitsubishi","Galant Fortis / Lancer X","2007–2015"],[/^Z2\dA\w*$/,"Mitsubishi","Colt","2002–2012"],
+  [/^V[67]\dW$/,"Mitsubishi","Pajero","1999–2006"],[/^V[89]\dW$/,"Mitsubishi","Pajero","2006–2021"],[/^K9\dW\w*$/,"Mitsubishi","Pajero Sport","1996–2008"],[/^H[67]\dW$/,"Mitsubishi","Pajero iO / Mini","1998–2007"],
+  [/^CU\dW$/,"Mitsubishi","Airtrek / Outlander","2001–2005"],[/^CW\dW$/,"Mitsubishi","Outlander","2005–2012"],[/^G[FG]\dW$/,"Mitsubishi","Outlander","2012–2021"],
+  [/^GA\dW$/,"Mitsubishi","RVR / ASX","2010–"],[/^CV\dW$/,"Mitsubishi","Delica D:5","2007–"],[/^P[DEF]\dW$/,"Mitsubishi","Delica Space Gear","1994–2007"],
+  // Subaru
+  [/^G[DG][2-9A-C]$/,"Subaru","Impreza","2000–2007"],[/^G[EH][2-8]$/,"Subaru","Impreza","2007–2011"],[/^G[JP][2-7]$/,"Subaru","Impreza / XV","2011–2016"],
+  [/^B[EH][5-9E]$/,"Subaru","Legacy","1998–2003"],[/^B[LP][5-9E]$/,"Subaru","Legacy","2003–2009"],[/^B[RM][9FM]$/,"Subaru","Legacy","2009–2014"],[/^BS9$/,"Subaru","Legacy Outback","2014–2020"],
+  [/^SF[5-9]$/,"Subaru","Forester","1997–2002"],[/^SG[5-9]$/,"Subaru","Forester","2002–2007"],[/^SH[5-9J]$/,"Subaru","Forester","2007–2012"],[/^SJ[5G]$/,"Subaru","Forester","2012–2018"],[/^SK[59E]$/,"Subaru","Forester","2018–"],
+  // Suzuki
+  [/^TD[5-9]\dW$/,"Suzuki","Escudo / Grand Vitara","2005–2017"],[/^Z[CD]\d1S$/,"Suzuki","Swift","2004–2010"],[/^Z[CD]\d2S$/,"Suzuki","Swift","2010–2017"],
+  [/^JB23W$/,"Suzuki","Jimny","1998–2018"],[/^JB43W$/,"Suzuki","Jimny Sierra","2002–2018"],[/^JB64W$/,"Suzuki","Jimny","2018–"],[/^Y[A-C][14]1S$/,"Suzuki","SX4","2006–2014"],[/^MH\d\dS$/,"Suzuki","Wagon R","2003–2022"],
+];
+function findFrame(raw){
+  const s = raw.toUpperCase().replace(/\s+/g, "");
+  const m = s.match(/^([A-Z0-9]{2,8})-?(\d{4,8})$/);
+  if (!m) return null;
+  // Без дефиса пробуем, где кончается код, начиная с самого длинного варианта
+  const codes = s.includes("-") ? [m[1]] : [...Array(7).keys()].map(i => s.slice(0, i + 2)).filter(c => /^\d{4,8}$/.test(s.slice(c.length))).reverse();
+  const match = c => FRAMES.filter(([re]) => re.test(c)).map(([, make, model, years]) => ({code: c, make, model, years}));
+  for (const code of codes) {
+    let found = match(code);
+    if (!found.length && /[A-Z]$/.test(code)) found = match(code.slice(0, -1)); // лишняя буква в конце кода
+    if (found.length) return {code, found};
+  }
+  return {code: codes[0] || m[1], found: []};
+}
+
+// Нет VIN: пробуем как номер кузова японской машины
+function decodeFrame(raw){
+  const info = $("carinfo"), r = findFrame(raw);
+  info.innerHTML = "";
+  if (!r) { info.hidden = true; setStatus("Это не похоже ни на VIN (17 символов), ни на номер кузова (например, NZE121-0123456). Проверьте ввод или введите марку и модель вручную.", true); return; }
+  const search = `<a target="_blank" rel="noopener" href="https://yandex.ru/search/?text=${encodeURIComponent("номер кузова " + r.code + " какая машина")}">поискать «${esc(r.code)}» в интернете ↗</a>`;
+  if (!r.found.length) { info.hidden = true; setStatus("", false); $("status").innerHTML = `Номер кузова ${esc(r.code)} в нашей базе не найден. Введите марку и модель вручную или ${search}`; return; }
+  const apply = f => {
+    $("make").value = f.make; $("model").value = f.model; $("year").value = "";
+    info.innerHTML = `✓ ${esc(f.make)} ${esc(f.model)}, кузов ${esc(f.code)}, выпуск ${esc(f.years)}. Год впишите сами: по номеру кузова его точно не определить.`;
+    info.hidden = false; setStatus(""); $("year").focus(); markGarage && markGarage();
+  };
+  if (r.found.length === 1) { apply(r.found[0]); return; }
+  setStatus(""); info.hidden = false;
+  info.innerHTML = `Кузов ${esc(r.code)} подходит к нескольким машинам, выберите свою: <div class="chips" style="margin-top:6px">${r.found.map((f, i) => `<button type="button" class="chip btn" data-fr="${i}">${esc(f.make)} ${esc(f.model)} <b>${esc(f.years)}</b></button>`).join("")}</div>`;
+  info.querySelectorAll("[data-fr]").forEach(b => b.addEventListener("click", () => apply(r.found[+b.dataset.fr])));
+}
 const cap = s => s ? s.charAt(0) + s.slice(1).toLowerCase() : s;
 
 // История последних 8 поисков (только в этом браузере)
