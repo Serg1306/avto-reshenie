@@ -171,6 +171,8 @@ input[type=file]::file-selector-button{font:600 .9rem var(--body);color:var(--fg
 /* 3D-машина: при прокрутке камера облетает машину, надписи сменяются (как в презентациях концепт-каров) */
 #car3d{position:relative;height:320svh;margin:0 calc(-1*max(16px,env(safe-area-inset-right))) 8px calc(-1*max(16px,env(safe-area-inset-left)));--p:0}
 #car3d .stage{position:sticky;top:0;height:100svh;overflow:hidden;background:radial-gradient(120% 70% at 50% 62%,#0b1a33 0%,#04070f 60%,#020409 100%)}
+#car3d .poster3d{position:absolute;inset:0;background:url(car3d.jpg) center 58%/cover no-repeat;transition:opacity .8s var(--ease-out)}
+#car3d.ready .poster3d{opacity:0}
 #car3d canvas{position:absolute;inset:0;width:100%;height:100%;display:block;opacity:0;transition:opacity .8s var(--ease-out)}
 #car3d.ready canvas{opacity:1}
 #car3d .grid3d{position:absolute;inset:0;pointer-events:none;background:linear-gradient(rgba(95,208,255,.05) 1px,transparent 1px) 0 0/100% 48px,linear-gradient(90deg,rgba(95,208,255,.05) 1px,transparent 1px) 0 0/48px 100%;mask:linear-gradient(180deg,#000 0%,transparent 45%)}
@@ -227,6 +229,7 @@ input[type=file]::file-selector-button{font:600 .9rem var(--body);color:var(--fg
 </section>
 <section id="car3d" aria-label="Что умеет АвтоРешение">
   <div class="stage">
+    <div class="poster3d"></div>
     <div class="grid3d"></div>
     <div class="hud top"><span>АвтоРешение <b>// 360°</b></span><span class="sc">01 / 03</span></div>
     <div class="hud scene on"><small>// 01 · документы</small><h3>VIN<br><i>по фото</i></h3><p>Сфотографируйте СТС или ПТС: прочитаем VIN и узнаем марку, модель, год и двигатель.</p></div>
@@ -1175,19 +1178,20 @@ function esc(s){ const d = document.createElement("div"); d.textContent = s || "
 </script>
 <script type="importmap">{"imports":{"three":"./vendor/three/three.module.js","three/addons/":"./vendor/three/addons/"}}</script>
 <script type="module">
-// 3D-машина: three.js (своя копия в vendor/three, MIT) грузится только когда блок рядом с экраном; если 3D не запустился, блок скрывается; прокрутка двигает камеру по трём ракурсам.
+// 3D-машина: three.js (своя копия в vendor/three, MIT) грузится только когда блок рядом с экраном; если 3D не запустился, остаётся картинка car3d.jpg, надписи всё равно сменяются; прокрутка двигает камеру по трём ракурсам.
 const sec = document.getElementById("car3d");
 const scenes = [...sec.querySelectorAll(".scene")], dots = [...sec.querySelectorAll(".dots i")], counter = sec.querySelector(".sc");
 const still = matchMedia("(prefers-reduced-motion: reduce)").matches;
 let target = 0, cur = 0, shown = 0;
 const measure = () => { const r = sec.getBoundingClientRect(), span = sec.offsetHeight - innerHeight;
-  target = still ? 0 : Math.max(0, Math.min(1, -r.top / Math.max(span, 1))); };
-addEventListener("scroll", measure, {passive:true}); addEventListener("resize", measure); measure();
+  target = still ? 0 : Math.max(0, Math.min(1, -r.top / Math.max(span, 1)));
+  if (!sec.classList.contains("ready")) { sec.style.setProperty("--p", target.toFixed(4)); setScene(Math.min(2, Math.floor(target * 3 * 0.999 + 0.0001))); } };
 const setScene = i => { if (i === shown) return; shown = i;
   scenes.forEach((s, k) => s.classList.toggle("on", k === i)); dots.forEach((d, k) => d.classList.toggle("on", k === i));
   counter.textContent = "0" + (i + 1) + " / 03"; };
+addEventListener("scroll", measure, {passive:true}); addEventListener("resize", measure); measure();
 
-new IntersectionObserver((es, io) => { if (es.some(e => e.isIntersecting)) { io.disconnect(); start().catch(() => { sec.hidden = true; }); } },
+new IntersectionObserver((es, io) => { if (es.some(e => e.isIntersecting)) { io.disconnect(); start().catch(() => sec.classList.add("nogl")); } },
   {rootMargin: "800px 0px"}).observe(sec);
 
 async function start(){
