@@ -1632,7 +1632,7 @@ async function start(){
   const loader = new GLTFLoader(); loader.setDRACOLoader(draco);
   const gltf = await loader.loadAsync("car.glb");
   const car = gltf.scene.children[0];
-  const body = new THREE.MeshPhysicalMaterial({color: 0x0c0f16, metalness: 0.9, roughness: 0.32, clearcoat: 1, clearcoatRoughness: 0.03, envMapIntensity: 0.45});
+  const body = new THREE.MeshPhysicalMaterial({color: 0xff1a1a, metalness: 0.5, roughness: 0.25, clearcoat: 1, clearcoatRoughness: 0.03, envMapIntensity: 1.1, emissive: 0x3a0000}); // ярко-красная «ферраривская» краска
   const details = new THREE.MeshStandardMaterial({color: 0x9aa6b8, metalness: 1, roughness: 0.35, envMapIntensity: 0.5});
   const glass = new THREE.MeshPhysicalMaterial({color: 0x0a1626, metalness: 0.2, roughness: 0, transmission: 0.6, transparent: true});
   car.getObjectByName("body").material = body;
