@@ -143,6 +143,31 @@ input[type=file]::file-selector-button{font:600 .9rem var(--body);color:var(--fg
 .towgroup b{display:block;margin-bottom:8px}
 .towlinks a{display:flex;align-items:center;justify-content:center;gap:8px;text-align:center;text-decoration:none;color:var(--fg);font-weight:700;background:var(--chip);border:1px solid var(--line);border-radius:14px;padding:10px 6px;font-size:.92rem}
 [data-ai][hidden]{display:none!important}
+.sr-only{position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0 0 0 0);white-space:nowrap}
+/* Первый экран: видео прокручивается вместе со страницей (кадры двигаются при пролистывании) */
+#hero{position:relative;height:260svh;margin:calc(-24px - env(safe-area-inset-top,0px)) calc(-1*max(16px,env(safe-area-inset-right))) 8px calc(-1*max(16px,env(safe-area-inset-left)));--h:0}
+#hero .stage{position:sticky;top:0;height:100svh;overflow:hidden;background:#05070d}
+#hero video,#hero .poster{position:absolute;inset:0;width:100%;height:100%;object-fit:cover}
+#hero .poster{background:#05070d url(hero.jpg) center/cover}
+#hero .shade{position:absolute;inset:0;background:linear-gradient(180deg,rgba(5,8,18,.55) 0%,rgba(5,8,18,0) 30%,rgba(5,8,18,0) 55%,rgba(6,13,31,.92) 100%)}
+#hero .hud{position:absolute;left:max(20px,env(safe-area-inset-left));right:max(20px,env(safe-area-inset-right));color:#fff}
+#hero .top{top:calc(18px + env(safe-area-inset-top,0px));display:flex;justify-content:space-between;align-items:center;font:500 .72rem var(--mono);letter-spacing:.14em;text-transform:uppercase;color:rgba(255,255,255,.75)}
+#hero .top b{font:800 1rem var(--display);letter-spacing:.02em;text-transform:none;color:#fff}
+#hero .top b span{color:#5fd0ff}
+#hero .ttl{top:calc(16svh + env(safe-area-inset-top,0px));opacity:calc(1 - var(--h)*2.4);transform:translateY(calc(var(--h)*-60px))}
+#hero .ttl small{display:block;font:500 .72rem var(--mono);letter-spacing:.2em;color:#5fd0ff;margin-bottom:10px}
+#hero h2{font:800 clamp(2.4rem,12vw,5rem)/.92 var(--display);letter-spacing:-.02em;text-transform:uppercase;margin:0;text-shadow:0 4px 30px rgba(0,0,0,.5)}
+#hero h2 i{font-style:normal;color:#5fd0ff}
+#hero .cap{top:calc(16svh + env(safe-area-inset-top,0px));opacity:calc(min(1,(var(--h) - .38)*5) - max(0,(var(--h) - .72)*5));transform:translateY(calc((.55 - var(--h))*40px))}
+#hero .cap h3{font:800 clamp(1.8rem,9vw,3.4rem)/.95 var(--display);text-transform:uppercase;margin:0 0 10px}
+#hero .cap p{margin:0;max-width:30ch;color:rgba(255,255,255,.8);font-size:.95rem}
+#hero .stats{bottom:calc(84px + env(safe-area-inset-bottom,0px));display:grid;grid-template-columns:repeat(4,1fr);gap:8px;border-top:1px solid rgba(255,255,255,.18);padding-top:12px}
+#hero .stats div{font:500 .62rem var(--mono);letter-spacing:.1em;text-transform:uppercase;color:rgba(255,255,255,.6)}
+#hero .stats b{display:block;font:700 1.05rem var(--mono);letter-spacing:0;color:#fff;margin-bottom:2px}
+#hero .hint{bottom:calc(30px + env(safe-area-inset-bottom,0px));display:flex;align-items:center;justify-content:center;gap:10px;font:500 .72rem var(--mono);letter-spacing:.18em;text-transform:uppercase;color:rgba(255,255,255,.7);opacity:calc(1 - var(--h)*4)}
+#hero .hint::before{content:"";width:18px;height:28px;border:1.5px solid rgba(255,255,255,.6);border-radius:10px;background:radial-gradient(circle at 50% 30%,#fff 0 2px,transparent 3px)}
+#hero .bar{position:absolute;left:0;bottom:0;height:2px;width:100%;transform-origin:0 50%;transform:scaleX(var(--h));background:#5fd0ff;box-shadow:0 0 10px #5fd0ff}
+@media (prefers-reduced-motion:reduce){#hero{height:100svh}#hero video{display:none}#hero .cap{display:none}#hero .ttl,#hero .hint{opacity:1;transform:none}}
 /* Наведение — только для мыши: на телефоне подсветка «залипала» после касания */
 @media (hover:hover) and (pointer:fine){
 .primary:hover{box-shadow:0 0 0 1px rgba(120,175,255,.55),0 10px 34px rgba(50,120,255,.5)}
@@ -162,10 +187,21 @@ input[type=file]::file-selector-button{font:600 .9rem var(--body);color:var(--fg
 </head>
 <body>
 <div id="progress" aria-hidden="true"></div>
+<section id="hero" aria-label="АвтоРешение">
+  <div class="stage">
+    <div class="poster"></div>
+    <video muted playsinline preload="auto" poster="hero.jpg" aria-hidden="true"></video>
+    <div class="shade"></div>
+    <div class="hud top"><b>Авто<span>Решение</span></b><span>помощь водителю</span></div>
+    <div class="hud ttl"><small>// диагностика · ремонт · помощь</small><h2>Найдём<br><i>решение</i><br>для авто</h2></div>
+    <div class="hud cap"><h3>VIN, коды<br>и видео</h3><p>Расшифруем VIN по фото документов, объясним код ошибки и подберём ролики с ремонтом именно вашей машины.</p></div>
+    <div class="hud stats"><div><b>VIN</b>по фото</div><div><b>OBD</b>коды</div><div><b>YT</b>видео</div><div><b>112</b>эвакуатор</div></div>
+    <div class="hud hint">листайте вниз</div>
+    <div class="bar"></div>
+  </div>
+</section>
 <div class="wrap">
-  <header>
-    <h1>Авто<span>Решение</span></h1>
-  </header>
+  <h1 class="sr-only">АвтоРешение</h1>
 
   <section class="panel grid tow" id="tow">
     <div class="towhead">
@@ -1045,6 +1081,25 @@ function esc(s){ const d = document.createElement("div"); d.textContent = s || "
       if (city.value.trim()) render();
     }, {enableHighAccuracy: true, timeout: 10000, maximumAge: 300000});
   });
+})();
+// Первый экран: при пролистывании прокручиваем кадры видео (плавно догоняя позицию прокрутки).
+(function(){
+  const hero = document.getElementById("hero"); if (!hero) return;
+  const vid = hero.querySelector("video");
+  if (matchMedia("(prefers-reduced-motion: reduce)").matches) return;
+  vid.src = "hero.mp4";
+  let target = 0, cur = 0, raf = 0, ready = false;
+  vid.addEventListener("loadeddata", () => { ready = true; hero.querySelector(".poster").remove(); tick(); }, {once:true});
+  // iOS загружает кадры только после play(): запускаем и сразу ставим на паузу
+  const unlock = () => { const pr = vid.play(); if (pr) pr.then(() => vid.pause()).catch(() => {}); };
+  unlock(); addEventListener("touchstart", unlock, {once:true, passive:true});
+  const measure = () => { const r = hero.getBoundingClientRect(), span = hero.offsetHeight - innerHeight;
+    target = Math.max(0, Math.min(1, -r.top / Math.max(span, 1))); if (!raf) raf = requestAnimationFrame(tick); };
+  function tick(){ raf = 0; cur += (target - cur) * 0.18; if (Math.abs(target - cur) < 0.0005) cur = target;
+    hero.style.setProperty("--h", cur.toFixed(4));
+    if (ready && vid.duration) { const t = cur * (vid.duration - 0.05); if (Math.abs(vid.currentTime - t) > 0.02) vid.currentTime = t; }
+    if (cur !== target) raf = requestAnimationFrame(tick); }
+  addEventListener("scroll", measure, {passive:true}); addEventListener("resize", measure); measure();
 })();
 // Анимация при прокрутке: блоки плавно появляются, когда попадают в экран.
 // Новые блоки (результаты поиска, видео) подхватываются автоматически.
