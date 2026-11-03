@@ -183,6 +183,11 @@ input[type=file]::file-selector-button{font:600 .9rem var(--body);color:var(--fg
         <input id="vin" maxlength="20" placeholder="JTDBR32E720123456 или NZE121-0123456"></div>
       <button type="button" class="ghost" id="decode">Расшифровать</button>
     </div>
+    <div class="actions">
+      <button type="button" class="ghost small" id="vinphotobtn" onclick="document.getElementById('vinphoto').click()">📷 VIN по фото СТС или ПТС</button>
+      <input type="file" id="vinphoto" accept="image/*" hidden>
+      <span class="hint">Фото не отправляется в интернет, текст распознаётся прямо на телефоне.</span>
+    </div>
     <div class="car" id="carinfo" hidden></div>
     <div class="or">или вручную</div>
     <div class="row">
@@ -632,6 +637,105 @@ function localVin(vin){
   }
   return {make: make.includes(" / ") && model ? (VAG.Skoda[vin.slice(6,8)] && !VAG.Volkswagen[vin.slice(6,8)] ? "Skoda" : brand) : make, model, year: vinYear(vin[9])};
 }
+
+// VIN по фото СТС/ПТС: распознавание текста прямо в браузере (Tesseract), фото никуда не отправляется.
+// Файлы распознавания (~7 МБ) лежат в папке ocr/ и скачиваются только при первом использовании.
+let ocrWorker = null;
+function loadScript(src){
+  return new Promise((ok, fail) => { const s = document.createElement("script"); s.src = src; s.onload = ok; s.onerror = () => fail(new Error("не загрузился " + src)); document.head.appendChild(s); });
+}
+async function getOcr(progress){
+  if (ocrWorker) return ocrWorker;
+  if (!window.Tesseract) await loadScript("ocr/tesseract.min.js");
+  const base = new URL("ocr/", location.href).href;
+  ocrWorker = await Tesseract.createWorker("eng", 1, {
+    workerPath: base + "worker.min.js", corePath: base, langPath: base, gzip: true,
+    logger: m => m.status === "recognizing text" && progress(Math.round(m.progress * 100)),
+  });
+  await ocrWorker.setParameters({tessedit_char_whitelist: "ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789-", tessedit_pageseg_mode: "11"});
+  return ocrWorker;
+}
+// Фото → контрастная чёрно-белая картинка нужного размера: так Tesseract ошибается реже
+async function prepImage(file, binarize){
+  const img = await createImageBitmap(file);
+  const k = Math.min(1, 2200 / Math.max(img.width, img.height)) * (Math.max(img.width, img.height) < 1200 ? 2 : 1);
+  const c = document.createElement("canvas"); c.width = Math.round(img.width * k); c.height = Math.round(img.height * k);
+  const x = c.getContext("2d"); x.drawImage(img, 0, 0, c.width, c.height);
+  const d = x.getImageData(0, 0, c.width, c.height), p = d.data;
+  let lo = 255, hi = 0;
+  for (let i = 0; i < p.length; i += 4) { const g = (p[i] * 299 + p[i+1] * 587 + p[i+2] * 114) / 1000; p[i] = g; if (g < lo) lo = g; if (g > hi) hi = g; }
+  const span = Math.max(hi - lo, 1);
+  // Порог по локальной яркости убирает тени и неровный свет на фото документа
+  if (binarize) {
+    const W = c.width, H = c.height, R = Math.max(8, Math.round(W / 60)), gray = new Float32Array(W * H), sum = new Float64Array((W + 1) * (H + 1));
+    for (let i = 0; i < W * H; i++) gray[i] = p[i * 4];
+    for (let y = 0; y < H; y++) for (let x = 0, row = 0; x < W; x++) { row += gray[y * W + x]; sum[(y + 1) * (W + 1) + x + 1] = sum[y * (W + 1) + x + 1] + row; }
+    for (let y = 0; y < H; y++) for (let x = 0; x < W; x++) {
+      const x0 = Math.max(0, x - R), x1 = Math.min(W, x + R + 1), y0 = Math.max(0, y - R), y1 = Math.min(H, y + R + 1);
+      const mean = (sum[y1 * (W + 1) + x1] - sum[y0 * (W + 1) + x1] - sum[y1 * (W + 1) + x0] + sum[y0 * (W + 1) + x0]) / ((x1 - x0) * (y1 - y0));
+      const v = gray[y * W + x] < mean * 0.9 ? 0 : 255, i = (y * W + x) * 4; p[i] = p[i+1] = p[i+2] = v;
+    }
+  } else for (let i = 0; i < p.length; i += 4) { const g = (p[i] - lo) * 255 / span; p[i] = p[i+1] = p[i+2] = g; }
+  x.putImageData(d, 0, 0);
+  return c;
+}
+// Контрольная цифра (9-й символ) обязательна для машин из Северной Америки, у остальных — бонус к уверенности
+function vinCheckOk(v){
+  const T = {A:1,B:2,C:3,D:4,E:5,F:6,G:7,H:8,J:1,K:2,L:3,M:4,N:5,P:7,R:9,S:2,T:3,U:4,V:5,W:6,X:7,Y:8,Z:9};
+  const w = [8,7,6,5,4,3,2,10,0,9,8,7,6,5,4,3,2];
+  let sum = 0;
+  for (let i = 0; i < 17; i++) sum += (/\d/.test(v[i]) ? +v[i] : T[v[i]] || 0) * w[i];
+  const r = sum % 11; return v[8] === (r === 10 ? "X" : String(r));
+}
+function vinCandidates(text){
+  const fix = s => s.toUpperCase().replace(/[OQ]/g, "0").replace(/I/g, "1");
+  const found = new Map();
+  const add = (v, bonus) => {
+    if (!/^[A-HJ-NPR-Z0-9]{17}$/.test(v) || !/[A-Z]/.test(v) || !/\d{4}$/.test(v)) return;
+    let score = bonus + (WMI[v.slice(0,3)] ? 3 : WMI2[v.slice(0,2)] ? 2 : 0) + (vinCheckOk(v) ? 3 : 0) + (/ZZZ/.test(v) ? 1 : 0);
+    found.set(v, Math.max(found.get(v) || 0, score));
+  };
+  const lines = text.split(/\n/).map(l => fix(l).replace(/[^A-Z0-9]/g, ""));
+  for (const l of lines) for (let i = 0; i + 17 <= l.length; i++) add(l.slice(i, i + 17), l.length === 17 ? 2 : 0);
+  // Отбрасываем случайные сочетания: нужна известная марка, верная контрольная цифра или отдельная строка из 17 символов
+  return [...found].filter(([, sc]) => sc >= 2).sort((a, b) => b[1] - a[1]).map(([v]) => v).slice(0, 4);
+}
+function frameCandidates(text){
+  const out = [];
+  for (const m of text.toUpperCase().matchAll(/\b([A-Z]{1,5}\d{1,3}[A-Z]?)\s?-\s?(\d{6,7})\b/g)) {
+    const v = m[1] + "-" + m[2], r = findFrame(v);
+    if (r && r.found.length && !out.includes(v)) out.push(v);
+  }
+  return out;
+}
+$("vinphoto").addEventListener("change", async e => {
+  const file = e.target.files[0]; e.target.value = "";
+  if (!file) return;
+  const btn = $("vinphotobtn"); btn.disabled = true; $("carinfo").hidden = true;
+  setStatus("Загружаю распознавание (первый раз около 7 МБ)…");
+  try {
+    const w = await getOcr(p => setStatus(`Ищу VIN на фото… ${p}%`));
+    setStatus("Ищу VIN на фото…");
+    // Несколько попыток: разная обработка фото и разбивка текста, пока не найдётся VIN
+    let all = [];
+    for (const [bin, psm] of [[false, "11"], [true, "11"], [false, "6"], [true, "6"]]) {
+      await w.setParameters({tessedit_pageseg_mode: psm});
+      const {data} = await w.recognize(await prepImage(file, bin));
+      const list = vinCandidates(data.text);
+      all = list.length ? list : frameCandidates(data.text);
+      if (all.length) break;
+    }
+    if (!all.length) { setStatus("Не нашёл VIN на фото. Сфотографируйте документ ближе, ровно и без бликов, чтобы строка с VIN была чёткой. Или введите VIN вручную.", true); return; }
+    const use = v => { $("vin").value = v; $("decode").click(); };
+    if (all.length === 1) { use(all[0]); return; }
+    setStatus("");
+    $("carinfo").innerHTML = `Нашёл на фото несколько похожих номеров, выберите свой (сверьте с документом): <div class="chips" style="margin-top:6px">${all.map(v => `<button type="button" class="chip btn" data-ocr="${esc(v)}">${esc(v)}</button>`).join("")}</div>`;
+    $("carinfo").hidden = false;
+    $("carinfo").querySelectorAll("[data-ocr]").forEach(b => b.addEventListener("click", () => use(b.dataset.ocr)));
+  } catch(err) {
+    setStatus("Не получилось распознать фото (" + err.message + "). Введите VIN вручную.", true);
+  } finally { btn.disabled = false; }
+});
 
 // Нет VIN: пробуем как номер кузова японской машины
 function decodeFrame(raw){
