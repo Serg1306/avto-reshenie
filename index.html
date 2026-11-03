@@ -1173,9 +1173,9 @@ function esc(s){ const d = document.createElement("div"); d.textContent = s || "
     .observe(document.querySelector(".wrap"), {childList:true, subtree:true});
 })();
 </script>
-<script type="importmap">{"imports":{"three":"https://cdn.jsdelivr.net/npm/three@0.160.0/build/three.module.js","three/addons/":"https://cdn.jsdelivr.net/npm/three@0.160.0/examples/jsm/"}}</script>
+<script type="importmap">{"imports":{"three":"./vendor/three/three.module.js","three/addons/":"./vendor/three/addons/"}}</script>
 <script type="module">
-// 3D-машина: three.js грузится только когда блок рядом с экраном; прокрутка двигает камеру по трём ракурсам.
+// 3D-машина: three.js (своя копия в vendor/three, MIT) грузится только когда блок рядом с экраном; если 3D не запустился, блок скрывается; прокрутка двигает камеру по трём ракурсам.
 const sec = document.getElementById("car3d");
 const scenes = [...sec.querySelectorAll(".scene")], dots = [...sec.querySelectorAll(".dots i")], counter = sec.querySelector(".sc");
 const still = matchMedia("(prefers-reduced-motion: reduce)").matches;
@@ -1187,7 +1187,7 @@ const setScene = i => { if (i === shown) return; shown = i;
   scenes.forEach((s, k) => s.classList.toggle("on", k === i)); dots.forEach((d, k) => d.classList.toggle("on", k === i));
   counter.textContent = "0" + (i + 1) + " / 03"; };
 
-new IntersectionObserver((es, io) => { if (es.some(e => e.isIntersecting)) { io.disconnect(); start().catch(() => {}); } },
+new IntersectionObserver((es, io) => { if (es.some(e => e.isIntersecting)) { io.disconnect(); start().catch(() => { sec.hidden = true; }); } },
   {rootMargin: "800px 0px"}).observe(sec);
 
 async function start(){
@@ -1234,7 +1234,7 @@ async function start(){
   const rimL = new THREE.PointLight(0x2fb8ff, 10, 10); rimL.position.set(-3.5, 1.2, -1.5); scene.add(rimL);
   const rimR = new THREE.PointLight(0x5fd0ff, 7, 10); rimR.position.set(3.5, 0.8, 2.5); scene.add(rimR);
 
-  const draco = new DRACOLoader(); draco.setDecoderPath("https://cdn.jsdelivr.net/npm/three@0.160.0/examples/jsm/libs/draco/gltf/");
+  const draco = new DRACOLoader(); draco.setDecoderPath("./vendor/three/addons/libs/draco/gltf/");
   const loader = new GLTFLoader(); loader.setDRACOLoader(draco);
   const gltf = await loader.loadAsync("car.glb");
   const car = gltf.scene.children[0];
