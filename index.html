@@ -143,6 +143,20 @@ input[type=file]::file-selector-button{font:600 .9rem var(--body);color:var(--fg
 .towgroup b{display:block;margin-bottom:8px}
 .towlinks a{display:flex;align-items:center;justify-content:center;gap:8px;text-align:center;text-decoration:none;color:var(--fg);font-weight:700;background:var(--chip);border:1px solid var(--line);border-radius:14px;padding:10px 6px;font-size:.92rem}
 [data-ai][hidden]{display:none!important}
+/* Запчасти рядом: карточки магазинов */
+.shops{display:grid;gap:8px}
+.shops:empty,#partlinks:empty{display:none}
+.shop{border:1px solid var(--line);border-radius:4px;background:rgba(95,208,255,.04);padding:12px 14px;display:grid;gap:4px}
+.shop h3{margin:0;font:700 1rem/1.25 var(--body);display:flex;justify-content:space-between;align-items:baseline;gap:10px}
+.shop h3 small{flex:none;font:500 .76rem var(--mono);letter-spacing:.06em;color:var(--hud)}
+.shop p{margin:0;font-size:.88rem;color:#9fb2cf;overflow-wrap:anywhere}
+.shop p.open{color:var(--ok)}
+.shop .towlinks{margin-top:6px}
+.shops .more{justify-self:start}
+.osm{font-size:.74rem;color:#5d7393}
+.osm a{color:inherit}
+@media (max-width:420px){#partlinks .towlinks{grid-template-columns:repeat(2,1fr)}.shop .towlinks a{font-size:.84rem;padding:10px 4px}}
+#partchips .chip{font-size:.84rem;padding:5px 11px}
 .sr-only{position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0 0 0 0);white-space:nowrap}
 /* Первый экран: название, машина в разобранном виде (свой чертёж) и услуги */
 #hero{position:relative;min-height:100svh;margin:calc(-24px - env(safe-area-inset-top,0px)) calc(-1*max(16px,env(safe-area-inset-right))) 8px calc(-1*max(16px,env(safe-area-inset-left)));
@@ -305,7 +319,7 @@ input[type=file]::file-selector-button{font:600 .9rem var(--body);color:var(--fg
     <li><a href="#form"><em>02</em><b>Коды ошибок</b><span>Что сломалось и насколько срочно</span></a></li>
     <li><a href="#form"><em>03</em><b>Видео ремонта</b><span>Ролики именно про вашу машину</span></a></li>
     <li><a href="#tow"><em>04</em><b>Эвакуатор</b><span>И автосервисы рядом на карте</span></a></li>
-    <li><a href="#form"><em>05</em><b>Мой гараж</b><span>Машины сохраняются на телефоне</span></a></li>
+    <li><a href="#parts"><em>05</em><b>Запчасти рядом</b><span>Магазины, адреса и цены возле вас</span></a></li>
     <li><a href="#form"><em>06</em><b>Поиск ответов</b><span>Форумы и статьи по вашей проблеме</span></a></li>
   </ul>
 </section>
@@ -436,6 +450,27 @@ input[type=file]::file-selector-button{font:600 .9rem var(--body);color:var(--fg
       <div class="thumbs" id="estprev"></div></div>
     <div class="actions"><button type="button" class="primary" id="estgo">Проверить цены</button><span class="status" id="eststatus"></span></div>
     <div id="estout"></div>
+  </section>
+  <section class="panel grid" id="parts">
+    <div class="idx">// 04 · запчасти</div>
+    <h2>Запчасти <i>рядом</i></h2>
+    <p class="hint" style="margin:0">Магазины автозапчастей возле вас: адрес, часы работы, телефон и маршрут. И сразу цены на эту деталь на Авито, Drom, Exist, Emex и в других магазинах. Марка и модель берутся из блока «Ваше авто».</p>
+    <div><label for="partname">Какая деталь нужна</label>
+      <input id="partname" autocomplete="off" enterkeyhint="search" placeholder="Например: тормозные колодки передние"></div>
+    <div class="chips" id="partchips"></div>
+    <div class="row2">
+      <div><label for="partnum">Номер детали (артикул), если знаете</label>
+        <input id="partnum" autocapitalize="characters" autocorrect="off" autocomplete="off" spellcheck="false" placeholder="Например: 04465-33450"></div>
+      <div><label for="partcity">Где искать</label><input id="partcity" autocomplete="off" placeholder="Город или адрес, например: Казань"></div>
+    </div>
+    <div class="hint" id="partcar"></div>
+    <div class="actions">
+      <button type="button" class="primary" id="partgeo">📍 Магазины рядом со мной</button>
+      <button type="button" class="ghost" id="partcitygo">Искать по городу</button>
+    </div>
+    <div class="status" id="partstatus"></div>
+    <div class="shops" id="partshops"></div>
+    <div class="grid" id="partlinks"></div>
   </section>
 </div>
 
@@ -1225,6 +1260,155 @@ function esc(s){ const d = document.createElement("div"); d.textContent = s || "
       if (city.value.trim()) render();
     }, {enableHighAccuracy: true, timeout: 10000, maximumAge: 300000});
   });
+})();
+// Запчасти рядом: магазины из открытых данных OpenStreetMap (без ключей и своего сервера)
+// и готовые ссылки на поиск цен в интернет-магазинах и на картах.
+(function(){
+  const part = $("partname"), num = $("partnum"), city = $("partcity"), st = $("partstatus"),
+        shopsEl = $("partshops"), linksEl = $("partlinks"), carEl = $("partcar");
+  const POPULAR = ["Тормозные колодки", "Масляный фильтр", "Воздушный фильтр", "Салонный фильтр", "Аккумулятор", "Свечи зажигания", "Моторное масло", "Амортизаторы", "Шины"];
+  $("partchips").innerHTML = POPULAR.map(p => `<button type="button" class="chip btn" data-p="${esc(p)}">${esc(p)}</button>`).join("");
+  part.value = store.get("part_name"); num.value = store.get("part_num");
+  city.value = store.get("part_city") || store.get("tow_city") || $("city").value || "";
+  let here = null;      // [lat, lon] — точка, вокруг которой ищем
+  let shops = [], shown = 0;
+  const car = () => [$("make").value, $("model").value].map(s => s.trim()).filter(Boolean).join(" ");
+  const enc = encodeURIComponent;
+  const link = (href, text) => `<a target="_blank" rel="noopener" href="${href}">${text} ↗</a>`;
+
+  function renderLinks(){
+    const c = car(), p = part.value.trim(), a = num.value.trim().replace(/\s+/g, "");
+    const yr = $("year").value.trim();
+    carEl.textContent = c ? "Ищем для: " + [c, yr].filter(Boolean).join(" ") : "Совет: укажите марку и модель в блоке «Ваше авто», так поиск будет точнее.";
+    if (!p && !a) { linksEl.innerHTML = ""; return; }
+    const q = [p, c].filter(Boolean).join(" ") || a;
+    const qa = a ? [a, p].filter(Boolean).join(" ") : q;
+    const at = here ? `&ll=${here[1]},${here[0]}&z=12` : "";
+    const where = here ? "" : " " + city.value.trim();
+    const mapQ = "автозапчасти" + (c ? " " + $("make").value.trim() : "");
+    const mapLinks = here
+      ? [link(`https://yandex.ru/maps/?text=${enc(mapQ)}${at}`, "Яндекс Карты"), link(`https://2gis.ru/search/${enc(mapQ)}?m=${here[1]},${here[0]}/12`, "2ГИС"), link(`https://www.google.com/maps/search/${enc(mapQ)}/@${here[0]},${here[1]},12z`, "Google")]
+      : [link(`https://yandex.ru/maps/?text=${enc(mapQ + where)}`, "Яндекс Карты"), link(`https://2gis.ru/search/${enc(mapQ + where)}`, "2ГИС"), link(`https://www.google.com/maps/search/${enc(mapQ + where)}`, "Google")];
+    const price = [
+      link(`https://www.avito.ru/rossiya/zapchasti_i_aksessuary?q=${enc(qa)}`, "Авито"),
+      link(`https://baza.drom.ru/sell_spare_parts/?query=${enc(qa)}`, "Drom"),
+      link(`https://market.yandex.ru/search?text=${enc(qa)}`, "Яндекс Маркет"),
+      link(`https://www.ozon.ru/search/?text=${enc(qa)}`, "Ozon"),
+      link(`https://www.wildberries.ru/catalog/0/search.aspx?search=${enc(qa)}`, "Wildberries"),
+      link(`https://yandex.ru/search/?text=${enc(qa + " купить цена" + where)}`, "Яндекс поиск"),
+    ];
+    const ac = a.replace(/[^0-9A-Za-zА-Яа-яЁё]/g, "");
+    const byNum = a
+      ? [link(`https://www.exist.ru/Price/?pcode=${enc(ac)}`, "Exist"), link(`https://emex.ru/products/${enc(ac)}`, "Emex"), link(`https://www.zzap.ru/public/search.aspx#rawdata=${enc(ac)}`, "ZZap")]
+      : [];
+    linksEl.innerHTML = `<div class="towgroup"><b>💰 Цены в интернете</b><div class="towlinks">${price.join("")}</div></div>
+      ${a ? `<div class="towgroup"><b>🔩 По номеру детали ${esc(a)}</b><div class="towlinks">${byNum.join("")}</div></div>`
+          : `<div class="hint">Знаете номер детали? Впишите его, и появятся Exist, Emex и ZZap с ценами сразу от многих продавцов. Не знаете: ${link(`https://yandex.ru/search/?text=${enc("номер детали артикул " + [p, c, yr].filter(Boolean).join(" "))}`, "найти номер")}</div>`}
+      <div class="towgroup"><b>🗺 Все магазины на картах${here ? " рядом с вами" : ""}</b><div class="towlinks">${mapLinks.join("")}</div></div>`;
+  }
+
+  // Расстояние по прямой, км
+  const dist = (a, b, c, d) => { const R = 6371, r = Math.PI / 180, x = Math.sin((c - a) * r / 2) ** 2 + Math.cos(a * r) * Math.cos(c * r) * Math.sin((d - b) * r / 2) ** 2; return 2 * R * Math.asin(Math.sqrt(x)); };
+  const km = d => d < 1 ? Math.round(d * 1000 / 10) * 10 + " м" : d.toFixed(d < 10 ? 1 : 0).replace(".", ",") + " км";
+  const DAYS = {Mo:"Пн",Tu:"Вт",We:"Ср",Th:"Чт",Fr:"Пт",Sa:"Сб",Su:"Вс",PH:"праздники",off:"выходной",closed:"закрыто"};
+  const hours = h => h === "24/7" ? "круглосуточно" : h.replace(/\b(Mo|Tu|We|Th|Fr|Sa|Su|PH|off|closed)\b/g, m => DAYS[m]).replace(/;\s*/g, "; ");
+  function addr(t){
+    const street = [t["addr:street"], t["addr:housenumber"]].filter(Boolean).join(", ");
+    return [street || t["addr:full"] || "", t["addr:city"] && !street.includes(t["addr:city"]) ? t["addr:city"] : ""].filter(Boolean).join(", ");
+  }
+
+  async function overpass(lat, lon, r){
+    const tyres = /шин|колес|колёс|диск|резин/i.test(part.value);
+    const q = `[out:json][timeout:25];(nwr["shop"="car_parts"](around:${r},${lat},${lon});nwr["shop"~"^(car|car_repair)$"]["car_parts"="yes"](around:${r},${lat},${lon});${tyres ? `nwr["shop"="tyres"](around:${r},${lat},${lon});` : ""});out center tags;`;
+    const servers = ["https://overpass-api.de/api/interpreter", "https://overpass.kumi.systems/api/interpreter", "https://maps.mail.ru/osm/tools/overpass/api/interpreter"];
+    let err;
+    for (const s of servers) {
+      try {
+        const ctl = new AbortController(), t = setTimeout(() => ctl.abort(), 30000);
+        const res = await fetch(s, {method: "POST", body: "data=" + enc(q), headers: {"Content-Type": "application/x-www-form-urlencoded"}, signal: ctl.signal});
+        clearTimeout(t);
+        if (!res.ok) throw new Error("HTTP " + res.status);
+        return (await res.json()).elements || [];
+      } catch (e) { err = e; }
+    }
+    throw err;
+  }
+
+  function renderShops(){
+    const list = shops.slice(0, shown);
+    shopsEl.innerHTML = list.map(s => {
+      const t = s.tags, name = t.name || t.brand || "Магазин автозапчастей";
+      const phone = t.phone || t["contact:phone"] || "", site = t.website || t["contact:website"] || "";
+      const tel = phone.split(/[;,]/)[0].replace(/[^\d+]/g, "");
+      const a = addr(t);
+      return `<div class="shop"><h3><span>${esc(name)}</span><small>${km(s.d)}</small></h3>
+        ${a ? `<p>📍 ${esc(a)}</p>` : `<p>📍 адрес не указан, смотрите на карте</p>`}
+        ${t.opening_hours ? `<p>🕘 ${esc(hours(t.opening_hours))}</p>` : ""}
+        ${phone ? `<p>☎ ${esc(phone.split(/[;,]/)[0])}</p>` : ""}
+        <div class="towlinks">${link(`https://yandex.ru/maps/?rtext=${here[0]},${here[1]}~${s.lat},${s.lon}&rtt=auto`, "Маршрут")}
+          ${tel ? `<a href="tel:${esc(tel)}">Узнать цену</a>` : link(`https://2gis.ru/search/${enc(name)}?m=${s.lon},${s.lat}/17`, "В 2ГИС")}
+          ${site ? link(esc(/^https?:/i.test(site) ? site : "https://" + site), "Сайт") : link(`https://yandex.ru/maps/?text=${enc(name)}&ll=${s.lon},${s.lat}&z=17`, "Отзывы")}</div></div>`;
+    }).join("") + (shops.length > shown ? `<button type="button" class="ghost small more" id="partmore">Показать ещё ${Math.min(10, shops.length - shown)}</button>` : "")
+      + (shops.length ? `<div class="osm">Данные о магазинах: © участники <a href="https://www.openstreetmap.org/copyright" target="_blank" rel="noopener">OpenStreetMap</a>. Если магазина нет в списке, загляните в Яндекс Карты или 2ГИС ниже.</div>` : "");
+  }
+  shopsEl.addEventListener("click", e => { if (e.target.id === "partmore") { shown += 10; renderShops(); } });
+
+  async function search(lat, lon, label){
+    here = [+lat, +lon]; renderLinks();
+    st.className = "status"; st.textContent = "Ищу магазины запчастей " + label + "…";
+    shopsEl.innerHTML = "";
+    try {
+      let els = [];
+      for (const r of [5000, 15000, 40000]) { els = await overpass(lat, lon, r); if (els.length >= 3) break; }
+      const seen = new Set();
+      shops = els.map(e => ({tags: e.tags || {}, lat: e.lat ?? e.center?.lat, lon: e.lon ?? e.center?.lon}))
+        .filter(s => s.lat != null && !seen.has(s.lat.toFixed(4) + s.lon.toFixed(4)) && seen.add(s.lat.toFixed(4) + s.lon.toFixed(4)))
+        .map(s => (s.d = dist(here[0], here[1], s.lat, s.lon), s)).sort((a, b) => a.d - b.d);
+      shown = 10;
+      st.textContent = shops.length
+        ? `Нашёл магазинов: ${shops.length}. Ближайшие сверху. Цену проще всего узнать звонком или по ссылкам ниже.`
+        : "В открытой базе магазинов рядом нет. Откройте Яндекс Карты или 2ГИС ниже, там список полнее.";
+      renderShops();
+    } catch (e) {
+      st.className = "status err";
+      st.textContent = "Не удалось загрузить список магазинов (нет интернета или сервис занят). Ссылки на карты ниже работают.";
+    }
+  }
+
+  $("partgeo").addEventListener("click", () => {
+    if (!navigator.geolocation) { st.className = "status err"; st.textContent = "Браузер не умеет определять местоположение. Впишите город и нажмите «Искать по городу»."; return; }
+    st.className = "status"; st.textContent = "Определяю, где вы…";
+    navigator.geolocation.getCurrentPosition(p => search(p.coords.latitude.toFixed(5), p.coords.longitude.toFixed(5), "рядом с вами"), () => {
+      st.className = "status err";
+      st.textContent = city.value.trim() ? "Не удалось определить местоположение, ищу по городу." : "Не удалось определить местоположение. Разрешите доступ к геопозиции или впишите город.";
+      if (city.value.trim()) byCity();
+    }, {enableHighAccuracy: true, timeout: 10000, maximumAge: 300000});
+  });
+
+  async function byCity(){
+    const c = city.value.trim();
+    if (!c) { st.className = "status err"; st.textContent = "Впишите город или адрес."; city.focus(); return; }
+    st.className = "status"; st.textContent = "Ищу «" + c + "» на карте…";
+    try {
+      const r = await fetch(`https://nominatim.openstreetmap.org/search?format=jsonv2&limit=1&accept-language=ru&q=${enc(c)}`);
+      const d = (await r.json())[0];
+      if (!d) { st.className = "status err"; st.textContent = "Не нашёл такое место. Проверьте название города."; return; }
+      search((+d.lat).toFixed(5), (+d.lon).toFixed(5), "в городе " + c);
+    } catch (e) {
+      st.className = "status err"; st.textContent = "Не удалось найти город (нет интернета?). Ссылки на карты ниже работают.";
+      here = null; renderLinks();
+    }
+  }
+  $("partcitygo").addEventListener("click", byCity);
+  city.addEventListener("keydown", e => { if (e.key === "Enter") { e.preventDefault(); byCity(); } });
+
+  $("partchips").addEventListener("click", e => { const b = e.target.closest("[data-p]"); if (!b) return; part.value = b.dataset.p; store.set("part_name", part.value); renderLinks(); });
+  part.addEventListener("input", () => { store.set("part_name", part.value.trim()); renderLinks(); });
+  num.addEventListener("input", () => { store.set("part_num", num.value.trim()); renderLinks(); });
+  city.addEventListener("input", () => { store.set("part_city", city.value.trim()); if (!shops.length) { here = null; renderLinks(); } });
+  ["make", "model", "year"].forEach(id => $(id).addEventListener("input", renderLinks));
+  $("cars").addEventListener("click", () => setTimeout(renderLinks));
+  renderLinks();
 })();
 // Анимация при прокрутке: блоки плавно появляются, когда попадают в экран.
 // Новые блоки (результаты поиска, видео) подхватываются автоматически.
