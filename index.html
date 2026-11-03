@@ -157,6 +157,12 @@ input[type=file]::file-selector-button{font:600 .9rem var(--body);color:var(--fg
 .osm a{color:inherit}
 @media (max-width:420px){#partlinks .towlinks{grid-template-columns:repeat(2,1fr)}.shop .towlinks a{font-size:.84rem;padding:10px 4px}}
 #partchips .chip{font-size:.84rem;padding:5px 11px}
+.fuels{display:flex;gap:6px;flex-wrap:wrap;margin-top:2px}
+.fuels span{font:500 .72rem/1 var(--mono);letter-spacing:.04em;border:1px solid var(--line);border-radius:3px;padding:4px 7px;color:#7f93b4}
+.fuels span.yes{color:var(--hud);border-color:var(--hud-line);background:rgba(95,208,255,.08)}
+.fuels span.want{color:var(--accent-ink);background:var(--hud);border-color:var(--hud)}
+.fuels span.no{text-decoration:line-through;opacity:.55}
+#fuellist:empty,#fuellinks:empty{display:none}
 .sr-only{position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0 0 0 0);white-space:nowrap}
 /* Первый экран: название, машина в разобранном виде (свой чертёж) и услуги */
 #hero{position:relative;min-height:100svh;margin:calc(-24px - env(safe-area-inset-top,0px)) calc(-1*max(16px,env(safe-area-inset-right))) 8px calc(-1*max(16px,env(safe-area-inset-left)));
@@ -471,6 +477,20 @@ input[type=file]::file-selector-button{font:600 .9rem var(--body);color:var(--fg
     <div class="status" id="partstatus"></div>
     <div class="shops" id="partshops"></div>
     <div class="grid" id="partlinks"></div>
+  </section>
+  <section class="panel grid" id="fuel">
+    <div class="idx">// 05 · топливо</div>
+    <h2>Заправки <i>рядом</i></h2>
+    <p class="hint" style="margin:0">Ближайшие АЗС: какое топливо там продают, адрес, часы работы и маршрут. Выберите нужное топливо, и сначала покажем заправки, где оно есть.</p>
+    <div><label>Какое топливо нужно</label><div class="chips" id="fueltypes"></div></div>
+    <div><label for="fuelcity">Где искать</label><input id="fuelcity" autocomplete="off" placeholder="Город или адрес, например: Казань"></div>
+    <div class="actions">
+      <button type="button" class="primary" id="fuelgeo">⛽ Заправки рядом со мной</button>
+      <button type="button" class="ghost" id="fuelcitygo">Искать по городу</button>
+    </div>
+    <div class="status" id="fuelstatus"></div>
+    <div class="shops" id="fuellist"></div>
+    <div class="grid" id="fuellinks"></div>
   </section>
 </div>
 
@@ -1261,6 +1281,40 @@ function esc(s){ const d = document.createElement("div"); d.textContent = s || "
     }, {enableHighAccuracy: true, timeout: 10000, maximumAge: 300000});
   });
 })();
+// Общие помощники для поиска мест рядом по открытым данным OpenStreetMap
+const osmDist = (a, b, c, d) => { const R = 6371, r = Math.PI / 180, x = Math.sin((c - a) * r / 2) ** 2 + Math.cos(a * r) * Math.cos(c * r) * Math.sin((d - b) * r / 2) ** 2; return 2 * R * Math.asin(Math.sqrt(x)); };
+const osmKm = d => d < 1 ? Math.round(d * 1000 / 10) * 10 + " м" : d.toFixed(d < 10 ? 1 : 0).replace(".", ",") + " км";
+const OSM_DAYS = {Mo:"Пн",Tu:"Вт",We:"Ср",Th:"Чт",Fr:"Пт",Sa:"Сб",Su:"Вс",PH:"праздники",off:"выходной",closed:"закрыто"};
+const osmHours = h => h === "24/7" ? "круглосуточно" : h.replace(/\b(Mo|Tu|We|Th|Fr|Sa|Su|PH|off|closed)\b/g, m => OSM_DAYS[m]).replace(/;\s*/g, "; ");
+function osmAddr(t){
+  const street = [t["addr:street"], t["addr:housenumber"]].filter(Boolean).join(", ");
+  return [street || t["addr:full"] || "", t["addr:city"] && !street.includes(t["addr:city"]) ? t["addr:city"] : ""].filter(Boolean).join(", ");
+}
+// Запрос к Overpass с запасными серверами; возвращает точки с координатами и расстоянием, ближние сверху
+async function osmQuery(q, lat, lon){
+  const servers = ["https://overpass-api.de/api/interpreter", "https://overpass.kumi.systems/api/interpreter", "https://maps.mail.ru/osm/tools/overpass/api/interpreter"];
+  let err;
+  for (const s of servers) {
+    try {
+      const ctl = new AbortController(), t = setTimeout(() => ctl.abort(), 30000);
+      const res = await fetch(s, {method: "POST", body: "data=" + encodeURIComponent(q), headers: {"Content-Type": "application/x-www-form-urlencoded"}, signal: ctl.signal});
+      clearTimeout(t);
+      if (!res.ok) throw new Error("HTTP " + res.status);
+      const seen = new Set();
+      return ((await res.json()).elements || [])
+        .map(e => ({tags: e.tags || {}, lat: e.lat ?? e.center?.lat, lon: e.lon ?? e.center?.lon}))
+        .filter(p => { if (p.lat == null) return false; const k = p.lat.toFixed(4) + p.lon.toFixed(4); if (seen.has(k)) return false; seen.add(k); return true; })
+        .map(p => (p.d = osmDist(+lat, +lon, p.lat, p.lon), p)).sort((a, b) => a.d - b.d);
+    } catch (e) { err = e; }
+  }
+  throw err;
+}
+// Город или адрес → координаты (null, если не нашлось)
+async function osmGeocode(place){
+  const r = await fetch(`https://nominatim.openstreetmap.org/search?format=jsonv2&limit=1&accept-language=ru&q=${encodeURIComponent(place)}`);
+  const d = (await r.json())[0];
+  return d ? [(+d.lat).toFixed(5), (+d.lon).toFixed(5)] : null;
+}
 // Запчасти рядом: магазины из открытых данных OpenStreetMap (без ключей и своего сервера)
 // и готовые ссылки на поиск цен в интернет-магазинах и на картах.
 (function(){
@@ -1307,31 +1361,9 @@ function esc(s){ const d = document.createElement("div"); d.textContent = s || "
       <div class="towgroup"><b>🗺 Все магазины на картах${here ? " рядом с вами" : ""}</b><div class="towlinks">${mapLinks.join("")}</div></div>`;
   }
 
-  // Расстояние по прямой, км
-  const dist = (a, b, c, d) => { const R = 6371, r = Math.PI / 180, x = Math.sin((c - a) * r / 2) ** 2 + Math.cos(a * r) * Math.cos(c * r) * Math.sin((d - b) * r / 2) ** 2; return 2 * R * Math.asin(Math.sqrt(x)); };
-  const km = d => d < 1 ? Math.round(d * 1000 / 10) * 10 + " м" : d.toFixed(d < 10 ? 1 : 0).replace(".", ",") + " км";
-  const DAYS = {Mo:"Пн",Tu:"Вт",We:"Ср",Th:"Чт",Fr:"Пт",Sa:"Сб",Su:"Вс",PH:"праздники",off:"выходной",closed:"закрыто"};
-  const hours = h => h === "24/7" ? "круглосуточно" : h.replace(/\b(Mo|Tu|We|Th|Fr|Sa|Su|PH|off|closed)\b/g, m => DAYS[m]).replace(/;\s*/g, "; ");
-  function addr(t){
-    const street = [t["addr:street"], t["addr:housenumber"]].filter(Boolean).join(", ");
-    return [street || t["addr:full"] || "", t["addr:city"] && !street.includes(t["addr:city"]) ? t["addr:city"] : ""].filter(Boolean).join(", ");
-  }
-
-  async function overpass(lat, lon, r){
+  function overpass(lat, lon, r){
     const tyres = /шин|колес|колёс|диск|резин/i.test(part.value);
-    const q = `[out:json][timeout:25];(nwr["shop"="car_parts"](around:${r},${lat},${lon});nwr["shop"~"^(car|car_repair)$"]["car_parts"="yes"](around:${r},${lat},${lon});${tyres ? `nwr["shop"="tyres"](around:${r},${lat},${lon});` : ""});out center tags;`;
-    const servers = ["https://overpass-api.de/api/interpreter", "https://overpass.kumi.systems/api/interpreter", "https://maps.mail.ru/osm/tools/overpass/api/interpreter"];
-    let err;
-    for (const s of servers) {
-      try {
-        const ctl = new AbortController(), t = setTimeout(() => ctl.abort(), 30000);
-        const res = await fetch(s, {method: "POST", body: "data=" + enc(q), headers: {"Content-Type": "application/x-www-form-urlencoded"}, signal: ctl.signal});
-        clearTimeout(t);
-        if (!res.ok) throw new Error("HTTP " + res.status);
-        return (await res.json()).elements || [];
-      } catch (e) { err = e; }
-    }
-    throw err;
+    return osmQuery(`[out:json][timeout:25];(nwr["shop"="car_parts"](around:${r},${lat},${lon});nwr["shop"~"^(car|car_repair)$"]["car_parts"="yes"](around:${r},${lat},${lon});${tyres ? `nwr["shop"="tyres"](around:${r},${lat},${lon});` : ""});out center tags;`, lat, lon);
   }
 
   function renderShops(){
@@ -1340,10 +1372,10 @@ function esc(s){ const d = document.createElement("div"); d.textContent = s || "
       const t = s.tags, name = t.name || t.brand || "Магазин автозапчастей";
       const phone = t.phone || t["contact:phone"] || "", site = t.website || t["contact:website"] || "";
       const tel = phone.split(/[;,]/)[0].replace(/[^\d+]/g, "");
-      const a = addr(t);
-      return `<div class="shop"><h3><span>${esc(name)}</span><small>${km(s.d)}</small></h3>
+      const a = osmAddr(t);
+      return `<div class="shop"><h3><span>${esc(name)}</span><small>${osmKm(s.d)}</small></h3>
         ${a ? `<p>📍 ${esc(a)}</p>` : `<p>📍 адрес не указан, смотрите на карте</p>`}
-        ${t.opening_hours ? `<p>🕘 ${esc(hours(t.opening_hours))}</p>` : ""}
+        ${t.opening_hours ? `<p>🕘 ${esc(osmHours(t.opening_hours))}</p>` : ""}
         ${phone ? `<p>☎ ${esc(phone.split(/[;,]/)[0])}</p>` : ""}
         <div class="towlinks">${link(`https://yandex.ru/maps/?rtext=${here[0]},${here[1]}~${s.lat},${s.lon}&rtt=auto`, "Маршрут")}
           ${tel ? `<a href="tel:${esc(tel)}">Узнать цену</a>` : link(`https://2gis.ru/search/${enc(name)}?m=${s.lon},${s.lat}/17`, "В 2ГИС")}
@@ -1360,10 +1392,7 @@ function esc(s){ const d = document.createElement("div"); d.textContent = s || "
     try {
       let els = [];
       for (const r of [5000, 15000, 40000]) { els = await overpass(lat, lon, r); if (els.length >= 3) break; }
-      const seen = new Set();
-      shops = els.map(e => ({tags: e.tags || {}, lat: e.lat ?? e.center?.lat, lon: e.lon ?? e.center?.lon}))
-        .filter(s => s.lat != null && !seen.has(s.lat.toFixed(4) + s.lon.toFixed(4)) && seen.add(s.lat.toFixed(4) + s.lon.toFixed(4)))
-        .map(s => (s.d = dist(here[0], here[1], s.lat, s.lon), s)).sort((a, b) => a.d - b.d);
+      shops = els;
       shown = 10;
       st.textContent = shops.length
         ? `Нашёл магазинов: ${shops.length}. Ближайшие сверху. Цену проще всего узнать звонком или по ссылкам ниже.`
@@ -1390,10 +1419,9 @@ function esc(s){ const d = document.createElement("div"); d.textContent = s || "
     if (!c) { st.className = "status err"; st.textContent = "Впишите город или адрес."; city.focus(); return; }
     st.className = "status"; st.textContent = "Ищу «" + c + "» на карте…";
     try {
-      const r = await fetch(`https://nominatim.openstreetmap.org/search?format=jsonv2&limit=1&accept-language=ru&q=${enc(c)}`);
-      const d = (await r.json())[0];
-      if (!d) { st.className = "status err"; st.textContent = "Не нашёл такое место. Проверьте название города."; return; }
-      search((+d.lat).toFixed(5), (+d.lon).toFixed(5), "в городе " + c);
+      const p = await osmGeocode(c);
+      if (!p) { st.className = "status err"; st.textContent = "Не нашёл такое место. Проверьте название города."; return; }
+      search(p[0], p[1], "в городе " + c);
     } catch (e) {
       st.className = "status err"; st.textContent = "Не удалось найти город (нет интернета?). Ссылки на карты ниже работают.";
       here = null; renderLinks();
@@ -1408,6 +1436,100 @@ function esc(s){ const d = document.createElement("div"); d.textContent = s || "
   city.addEventListener("input", () => { store.set("part_city", city.value.trim()); if (!shops.length) { here = null; renderLinks(); } });
   ["make", "model", "year"].forEach(id => $(id).addEventListener("input", renderLinks));
   $("cars").addEventListener("click", () => setTimeout(renderLinks));
+  renderLinks();
+})();
+// Заправки рядом: АЗС из OpenStreetMap с видами топлива. Есть ли топливо прямо сейчас,
+// открытые данные не знают, поэтому даём телефон и ссылки на карты с ценами.
+(function(){
+  const city = $("fuelcity"), st = $("fuelstatus"), listEl = $("fuellist"), linksEl = $("fuellinks");
+  const TYPES = [["octane_92","АИ-92"],["octane_95","АИ-95"],["octane_98","АИ-98"],["octane_100","АИ-100"],["diesel","ДТ"],["lpg","Газ (пропан)"],["cng","Метан"]];
+  let want = store.get("fuel_type") || "octane_95", here = null, list = [], shown = 0;
+  city.value = store.get("fuel_city") || store.get("part_city") || store.get("tow_city") || $("city").value || "";
+  const label = k => (TYPES.find(t => t[0] === k) || [k, k])[1];
+  const has = (t, k) => k === "octane_100" ? (t["fuel:octane_100"] || t["fuel:octane_99"] || t["fuel:octane_102"]) : t["fuel:" + k];
+  const link = (href, text) => `<a target="_blank" rel="noopener" href="${href}">${text} ↗</a>`;
+  const drawTypes = () => $("fueltypes").innerHTML = TYPES.map(([k, n]) => `<button type="button" class="chip btn${k === want ? " sel" : ""}" data-f="${k}">${n}</button>`).join("");
+  drawTypes();
+
+  function renderLinks(){
+    const q = "АЗС " + label(want).replace(/ \(.*\)/, "");
+    const where = here ? "" : " " + city.value.trim();
+    if (!here && !city.value.trim()) { linksEl.innerHTML = ""; return; }
+    const maps = here
+      ? [link(`https://yandex.ru/maps/?text=${encodeURIComponent(q)}&ll=${here[1]},${here[0]}&z=13`, "Яндекс Карты"), link(`https://2gis.ru/search/${encodeURIComponent(q)}?m=${here[1]},${here[0]}/13`, "2ГИС"), link(`https://www.google.com/maps/search/${encodeURIComponent(q)}/@${here[0]},${here[1]},13z`, "Google")]
+      : [link(`https://yandex.ru/maps/?text=${encodeURIComponent(q + where)}`, "Яндекс Карты"), link(`https://2gis.ru/search/${encodeURIComponent(q + where)}`, "2ГИС"), link(`https://www.google.com/maps/search/${encodeURIComponent(q + where)}`, "Google")];
+    linksEl.innerHTML = `<div class="towgroup"><b>🗺 Цены на топливо и все АЗС на картах</b><div class="towlinks">${maps.join("")}</div></div>
+      <div class="hint">В Яндекс Картах и 2ГИС у заправок видны цены и свежие отзывы водителей, там же часто пишут, если топливо закончилось.</div>`;
+  }
+
+  function render(){
+    const items = list.slice(0, shown);
+    listEl.innerHTML = items.map(s => {
+      const t = s.tags, name = t.name || t.brand || "АЗС";
+      const brand = t.brand && t.name && !t.name.includes(t.brand) ? " · " + t.brand : "";
+      const phone = (t.phone || t["contact:phone"] || "").split(/[;,]/)[0], tel = phone.replace(/[^\d+]/g, "");
+      const a = osmAddr(t);
+      const fuels = TYPES.map(([k, n]) => { const v = has(t, k); return v ? `<span class="${v === "no" ? "no" : k === want ? "want" : "yes"}">${n.replace(/ \(.*\)/, "")}</span>` : ""; }).join("");
+      const mine = has(t, want);
+      return `<div class="shop"><h3><span>${esc(name + brand)}</span><small>${osmKm(s.d)}</small></h3>
+        ${fuels ? `<div class="fuels">${fuels}</div>` : ""}
+        ${!mine ? `<p>⛽ ${esc(label(want))}: нет данных, уточните на месте или по телефону</p>` : ""}
+        <p>📍 ${esc(a || "адрес не указан, смотрите на карте")}</p>
+        ${t.opening_hours ? `<p>🕘 ${esc(osmHours(t.opening_hours))}</p>` : ""}
+        ${phone ? `<p>☎ ${esc(phone)}</p>` : ""}
+        <div class="towlinks">${link(`https://yandex.ru/maps/?rtext=${here[0]},${here[1]}~${s.lat},${s.lon}&rtt=auto`, "Маршрут")}
+          ${tel ? `<a href="tel:${esc(tel)}">Позвонить</a>` : link(`https://2gis.ru/search/${encodeURIComponent(name)}?m=${s.lon},${s.lat}/17`, "В 2ГИС")}
+          ${link(`https://yandex.ru/maps/?text=${encodeURIComponent(name)}&ll=${s.lon},${s.lat}&z=17`, "Цены")}</div></div>`;
+    }).join("") + (list.length > shown ? `<button type="button" class="ghost small more" id="fuelmore">Показать ещё ${Math.min(10, list.length - shown)}</button>` : "")
+      + (list.length ? `<div class="osm">Данные о заправках: © участники <a href="https://www.openstreetmap.org/copyright" target="_blank" rel="noopener">OpenStreetMap</a>. Наличие топлива прямо сейчас открытые данные не показывают: перед поездкой лучше позвонить.</div>` : "");
+  }
+  // АЗС с нужным топливом сверху, где его точно нет — вниз; внутри групп по расстоянию
+  const rank = s => { const v = has(s.tags, want); return v === "no" ? 2 : v ? 0 : 1; };
+  const sortList = () => list.sort((a, b) => rank(a) - rank(b) || a.d - b.d);
+  listEl.addEventListener("click", e => { if (e.target.id === "fuelmore") { shown += 10; render(); } });
+
+  async function search(lat, lon, where){
+    here = [+lat, +lon]; renderLinks();
+    st.className = "status"; st.textContent = "Ищу заправки " + where + "…"; listEl.innerHTML = "";
+    try {
+      for (const r of [5000, 15000, 40000]) { list = await osmQuery(`[out:json][timeout:25];nwr["amenity"="fuel"](around:${r},${lat},${lon});out center tags;`, lat, lon); if (list.length >= 3) break; }
+      list = list.slice(0, 60); sortList(); shown = 10;
+      const n = list.filter(s => has(s.tags, want) && has(s.tags, want) !== "no").length;
+      st.textContent = list.length
+        ? `Нашёл заправок: ${list.length}${n ? `, из них с ${label(want)} точно: ${n}` : ""}. Они сверху.`
+        : "В открытой базе заправок рядом нет. Откройте Яндекс Карты или 2ГИС ниже.";
+      render();
+    } catch (e) {
+      st.className = "status err"; st.textContent = "Не удалось загрузить список заправок (нет интернета или сервис занят). Ссылки на карты ниже работают.";
+    }
+  }
+  async function byCity(){
+    const c = city.value.trim();
+    if (!c) { st.className = "status err"; st.textContent = "Впишите город или адрес."; city.focus(); return; }
+    st.className = "status"; st.textContent = "Ищу «" + c + "» на карте…";
+    try {
+      const p = await osmGeocode(c);
+      if (!p) { st.className = "status err"; st.textContent = "Не нашёл такое место. Проверьте название города."; return; }
+      search(p[0], p[1], "в городе " + c);
+    } catch (e) { st.className = "status err"; st.textContent = "Не удалось найти город (нет интернета?)."; here = null; renderLinks(); }
+  }
+  $("fuelgeo").addEventListener("click", () => {
+    if (!navigator.geolocation) { st.className = "status err"; st.textContent = "Браузер не умеет определять местоположение. Впишите город."; return; }
+    st.className = "status"; st.textContent = "Определяю, где вы…";
+    navigator.geolocation.getCurrentPosition(p => search(p.coords.latitude.toFixed(5), p.coords.longitude.toFixed(5), "рядом с вами"), () => {
+      st.className = "status err";
+      st.textContent = city.value.trim() ? "Не удалось определить местоположение, ищу по городу." : "Не удалось определить местоположение. Разрешите доступ к геопозиции или впишите город.";
+      if (city.value.trim()) byCity();
+    }, {enableHighAccuracy: true, timeout: 10000, maximumAge: 300000});
+  });
+  $("fuelcitygo").addEventListener("click", byCity);
+  city.addEventListener("keydown", e => { if (e.key === "Enter") { e.preventDefault(); byCity(); } });
+  city.addEventListener("input", () => { store.set("fuel_city", city.value.trim()); if (!list.length) { here = null; renderLinks(); } });
+  $("fueltypes").addEventListener("click", e => {
+    const b = e.target.closest("[data-f]"); if (!b) return;
+    want = b.dataset.f; store.set("fuel_type", want); drawTypes(); renderLinks();
+    if (list.length) { sortList(); render(); }
+  });
   renderLinks();
 })();
 // Анимация при прокрутке: блоки плавно появляются, когда попадают в экран.
