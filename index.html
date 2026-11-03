@@ -144,30 +144,42 @@ input[type=file]::file-selector-button{font:600 .9rem var(--body);color:var(--fg
 .towlinks a{display:flex;align-items:center;justify-content:center;gap:8px;text-align:center;text-decoration:none;color:var(--fg);font-weight:700;background:var(--chip);border:1px solid var(--line);border-radius:14px;padding:10px 6px;font-size:.92rem}
 [data-ai][hidden]{display:none!important}
 .sr-only{position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0 0 0 0);white-space:nowrap}
-/* Первый экран: видео прокручивается вместе со страницей (кадры двигаются при пролистывании) */
-#hero{position:relative;height:260svh;margin:calc(-24px - env(safe-area-inset-top,0px)) calc(-1*max(16px,env(safe-area-inset-right))) 8px calc(-1*max(16px,env(safe-area-inset-left)));--h:0}
-#hero .stage{position:sticky;top:0;height:100svh;overflow:hidden;background:#05070d}
-#hero video,#hero .poster{position:absolute;inset:0;width:100%;height:100%;object-fit:cover}
-#hero .poster{background:#05070d url(hero.jpg?v=3) center/cover}
-#hero .shade{position:absolute;inset:0;background:linear-gradient(180deg,rgba(5,8,18,.55) 0%,rgba(5,8,18,0) 30%,rgba(5,8,18,0) 55%,rgba(6,13,31,.92) 100%)}
-#hero .hud{position:absolute;left:max(20px,env(safe-area-inset-left));right:max(20px,env(safe-area-inset-right));color:#fff}
-#hero .top{top:calc(18px + env(safe-area-inset-top,0px));display:flex;justify-content:space-between;align-items:center;font:500 .72rem var(--mono);letter-spacing:.14em;text-transform:uppercase;color:rgba(255,255,255,.75)}
+/* Первый экран: название, машина в разобранном виде (свой чертёж) и услуги */
+#hero{position:relative;min-height:100svh;margin:calc(-24px - env(safe-area-inset-top,0px)) calc(-1*max(16px,env(safe-area-inset-right))) 8px calc(-1*max(16px,env(safe-area-inset-left)));
+  background:radial-gradient(120% 60% at 50% 52%,rgba(40,120,200,.22),transparent 60%),#05070d;overflow:hidden;display:flex;flex-direction:column;
+  padding:calc(18px + env(safe-area-inset-top,0px)) max(20px,env(safe-area-inset-right)) calc(26px + env(safe-area-inset-bottom,0px)) max(20px,env(safe-area-inset-left));color:#fff}
+#hero::before{content:"";position:absolute;inset:0;pointer-events:none;background:linear-gradient(rgba(95,208,255,.06) 1px,transparent 1px) 0 0/100% 40px,linear-gradient(90deg,rgba(95,208,255,.06) 1px,transparent 1px) 0 0/40px 100%;
+  -webkit-mask:radial-gradient(90% 70% at 50% 50%,#000,transparent 80%);mask:radial-gradient(90% 70% at 50% 50%,#000,transparent 80%)}
+#hero::after{content:"";position:absolute;left:0;right:0;bottom:0;height:120px;pointer-events:none;background:linear-gradient(180deg,transparent,rgba(6,13,31,.9))}
+#hero>*{position:relative;z-index:1;width:100%;max-width:920px;margin-inline:auto}
+#hero .top{display:flex;justify-content:space-between;align-items:center;font:500 .72rem var(--mono);letter-spacing:.14em;text-transform:uppercase;color:rgba(255,255,255,.75)}
 #hero .top b{font:800 1rem var(--display);letter-spacing:.02em;text-transform:none;color:#fff}
 #hero .top b span{color:#5fd0ff}
-#hero .ttl{top:calc(16svh + env(safe-area-inset-top,0px));opacity:calc(1 - var(--h)*2.4);transform:translateY(calc(var(--h)*-60px))}
+#hero .ttl{margin-top:clamp(22px,6svh,56px)}
 #hero .ttl small{display:block;font:500 .72rem var(--mono);letter-spacing:.2em;color:#5fd0ff;margin-bottom:10px}
-#hero h2{font:800 clamp(2.4rem,12vw,5rem)/.92 var(--display);letter-spacing:-.02em;text-transform:uppercase;margin:0;text-shadow:0 4px 30px rgba(0,0,0,.5)}
-#hero h2 i{font-style:normal;color:#5fd0ff}
-#hero .cap{top:calc(16svh + env(safe-area-inset-top,0px));opacity:calc(min(1,(var(--h) - .38)*5) - max(0,(var(--h) - .72)*5));transform:translateY(calc((.55 - var(--h))*40px))}
-#hero .cap h3{font:800 clamp(1.8rem,9vw,3.4rem)/.95 var(--display);text-transform:uppercase;margin:0 0 10px}
-#hero .cap p{margin:0;max-width:30ch;color:rgba(255,255,255,.8);font-size:.95rem}
-#hero .stats{bottom:calc(84px + env(safe-area-inset-bottom,0px));display:grid;grid-template-columns:repeat(4,1fr);gap:8px;border-top:1px solid rgba(255,255,255,.18);padding-top:12px}
-#hero .stats div{font:500 .62rem var(--mono);letter-spacing:.1em;text-transform:uppercase;color:rgba(255,255,255,.6)}
-#hero .stats b{display:block;font:700 1.05rem var(--mono);letter-spacing:0;color:#fff;margin-bottom:2px}
-#hero .hint{bottom:calc(30px + env(safe-area-inset-bottom,0px));display:flex;align-items:center;justify-content:center;gap:10px;font:500 .72rem var(--mono);letter-spacing:.18em;text-transform:uppercase;color:rgba(255,255,255,.7);opacity:calc(1 - var(--h)*4)}
-#hero .hint::before{content:"";width:18px;height:28px;border:1.5px solid rgba(255,255,255,.6);border-radius:10px;background:radial-gradient(circle at 50% 30%,#fff 0 2px,transparent 3px)}
-#hero .bar{position:absolute;left:0;bottom:0;height:2px;width:100%;transform-origin:0 50%;transform:scaleX(var(--h));background:#5fd0ff;box-shadow:0 0 10px #5fd0ff}
-@media (prefers-reduced-motion:reduce){#hero{height:100svh}#hero video{display:none}#hero .cap{display:none}#hero .ttl,#hero .hint{opacity:1;transform:none}}
+#hero h2{font:800 clamp(3rem,15vw,7.2rem)/.9 var(--display);letter-spacing:-.03em;text-transform:uppercase;margin:0;text-shadow:0 4px 30px rgba(0,0,0,.5)}
+#hero h2 i{font-style:normal;color:#5fd0ff;text-shadow:0 0 28px rgba(95,208,255,.45)}
+#hero .ttl p{margin:12px 0 0;max-width:34ch;color:rgba(255,255,255,.78);font-size:.98rem}
+#hero .blue{flex:1;display:flex;align-items:center;justify-content:center;margin:8px auto 4px;min-height:200px}
+#hero .xcar{width:100%;max-width:640px;height:auto;color:#5fd0ff;overflow:visible;filter:drop-shadow(0 0 6px rgba(95,208,255,.45))}
+#hero .xcar .pt{transition:transform 1.5s cubic-bezier(.16,1,.3,1);transition-delay:calc(var(--d,0)*1ms + 250ms)}
+#hero .xcar.go .pt{transform:translate(var(--x,0px),var(--y,0px))}
+#hero .xcar .gd,#hero .xcar .lb{opacity:0;transition:opacity .6s ease .9s}
+#hero .xcar.go .gd,#hero .xcar.go .lb{opacity:1}
+#hero .xcar .gd{stroke-dasharray:3 4;opacity:0}
+#hero .xcar.go .gd{opacity:.55}
+#hero .xcar .lb text{font:600 10px var(--mono);letter-spacing:.12em;fill:rgba(140,220,255,.9);stroke:none}
+#hero .xcar .lb text tspan{fill:#fff}
+#hero .srv{list-style:none;margin:0 auto;padding:14px 0 0;border-top:1px solid rgba(255,255,255,.16);display:grid;grid-template-columns:repeat(2,1fr);gap:8px}
+#hero .srv a{display:flex;flex-direction:column;gap:3px;height:100%;padding:11px 12px;border:1px solid var(--hud-line);border-radius:14px;background:rgba(10,22,40,.55);color:#fff;text-decoration:none;
+  -webkit-tap-highlight-color:transparent;transition:border-color .2s ease,background .2s ease,transform .16s ease}
+#hero .srv a:active{transform:scale(.97)}
+#hero .srv em{font:600 .62rem var(--mono);font-style:normal;letter-spacing:.16em;color:#5fd0ff}
+#hero .srv b{font:800 .98rem/1.15 var(--display)}
+#hero .srv span{font-size:.78rem;line-height:1.3;color:rgba(255,255,255,.62)}
+@media (min-width:720px){#hero .srv{grid-template-columns:repeat(3,1fr)}}
+@media (hover:hover) and (pointer:fine){#hero .srv a:hover{border-color:var(--hud);background:rgba(95,208,255,.08)}}
+@media (prefers-reduced-motion:reduce){#hero .xcar .pt,#hero .xcar .gd,#hero .xcar .lb{transition:none}}
 /* 3D-машина: при прокрутке камера облетает машину, надписи сменяются (как в презентациях концепт-каров) */
 #car3d{position:relative;height:320svh;margin:0 calc(-1*max(16px,env(safe-area-inset-right))) 8px calc(-1*max(16px,env(safe-area-inset-left)));--p:0}
 #car3d .stage{position:sticky;top:0;height:100svh;overflow:hidden;background:radial-gradient(120% 70% at 50% 62%,#0b1a33 0%,#04070f 60%,#020409 100%)}
@@ -288,17 +300,45 @@ input[type=file]::file-selector-button{font:600 .9rem var(--body);color:var(--fg
 <body>
 <div id="progress" aria-hidden="true"></div>
 <section id="hero" aria-label="АвтоРешение">
-  <div class="stage">
-    <div class="poster"></div>
-    <video muted playsinline preload="auto" poster="hero.jpg?v=3" aria-hidden="true"></video>
-    <div class="shade"></div>
-    <div class="hud top"><b>Авто<span>Решение</span></b><span>помощь водителю</span></div>
-    <div class="hud ttl"><small>// диагностика · ремонт · помощь</small><h2>Найдём<br><i>решение</i><br>для вашего<br>авто</h2></div>
-    <div class="hud cap"><h3>VIN, коды<br>и видео</h3><p>Расшифруем VIN по фото документов, объясним код ошибки и подберём ролики с ремонтом именно вашей машины.</p></div>
-    <div class="hud stats"><div><b>VIN</b>по фото</div><div><b>OBD</b>коды</div><div><b>YT</b>видео</div><div><b>112</b>эвакуатор</div></div>
-    <div class="hud hint">листайте вниз</div>
-    <div class="bar"></div>
-  </div>
+  <div class="top"><b>Авто<span>Решение</span></b><span>помощь водителю</span></div>
+  <div class="ttl"><small>// диагностика · ремонт · помощь</small><h2>Авто<br><i>Решение</i></h2>
+    <p>Разберём вашу машину по деталям: от расшифровки VIN до эвакуатора рядом.</p></div>
+  <div class="blue"><svg class="xcar" viewBox="0 0 420 250" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linejoin="round" stroke-linecap="round" aria-hidden="true">
+    <!-- направляющие разнесённых деталей -->
+    <g class="gd" stroke-width="1"><path d="M105 170v40M305 170v40M210 72V42M325 122V96M345 112V72M40 148H20M378 148h22"/></g>
+    <!-- 01 кузов -->
+    <g class="pt"><path d="M40 160V138Q42 126 62 124L128 122H296L342 126Q370 130 374 146V160H336A31 31 0 0 0 274 160H136A31 31 0 0 0 74 160Z"/>
+      <path d="M140 126V156M212 126V156M282 128V156" stroke-width="1" opacity=".7"/><path d="M196 138h10M268 138h10" stroke-width="2"/></g>
+    <!-- 02 салон и стёкла -->
+    <g class="pt" style="--y:-30px;--d:80"><path d="M128 122L160 82Q166 76 178 76H252Q262 76 268 82L298 122Z"/>
+      <path d="M142 118L166 88H208V118ZM216 88H252L278 118H216Z" stroke-width="1" opacity=".75"/></g>
+    <!-- 03 капот -->
+    <g class="pt" style="--x:16px;--y:-48px;--d:160"><path d="M298 118L344 122Q366 125 372 138L364 140Q358 130 342 128L298 124Z"/></g>
+    <!-- 04 двигатель -->
+    <g class="pt" style="--x:6px;--y:-26px;--d:240"><rect x="304" y="132" width="44" height="22" rx="3"/>
+      <path d="M311 132v-6h8v6M323 132v-6h8v6M335 132v-6h8v6M308 143h36" stroke-width="1"/></g>
+    <!-- 05 бамперы -->
+    <g class="pt" style="--x:26px;--d:320"><path d="M374 140Q386 144 386 154V164H370"/><path d="M378 148h6" stroke-width="2.4"/></g>
+    <g class="pt" style="--x:-26px;--d:320"><path d="M40 136Q28 140 28 152V164H44"/><path d="M30 146h6" stroke-width="2.4"/></g>
+    <!-- 06 колёса -->
+    <g class="pt" style="--y:40px;--d:400"><circle cx="105" cy="162" r="25"/><circle cx="105" cy="162" r="15" stroke-width="1"/><circle cx="105" cy="162" r="4"/>
+      <path d="M105 147v-0M105 147v6M105 171v6M90 162h6M114 162h6" stroke-width="1"/></g>
+    <g class="pt" style="--y:40px;--d:440"><circle cx="305" cy="162" r="25"/><circle cx="305" cy="162" r="15" stroke-width="1"/><circle cx="305" cy="162" r="4"/>
+      <path d="M305 147v6M305 171v6M290 162h6M314 162h6" stroke-width="1"/></g>
+    <!-- подписи -->
+    <g class="lb" stroke-width=".8"><path d="M84 46H146L162 54M330 46H392M362 46L352 72M354 113H360M14 112H54L68 136M150 222H122M226 222H288"/>
+      <text x="84" y="40"><tspan>01</tspan> САЛОН</text><text x="363" y="117"><tspan>02</tspan> ДВС</text>
+      <text x="330" y="40"><tspan>03</tspan> КАПОТ</text><text x="14" y="107"><tspan>04</tspan> КУЗОВ</text>
+      <text x="154" y="226"><tspan>05</tspan> ХОДОВАЯ</text></g>
+  </svg></div>
+  <ul class="srv">
+    <li><a href="#form"><em>01</em><b>VIN по фото</b><span>Марка, год и двигатель по СТС или ПТС</span></a></li>
+    <li><a href="#form"><em>02</em><b>Коды ошибок</b><span>Что сломалось и насколько срочно</span></a></li>
+    <li><a href="#form"><em>03</em><b>Видео ремонта</b><span>Ролики именно про вашу машину</span></a></li>
+    <li><a href="#tow"><em>04</em><b>Эвакуатор</b><span>И автосервисы рядом на карте</span></a></li>
+    <li><a href="#form"><em>05</em><b>Мой гараж</b><span>Машины сохраняются на телефоне</span></a></li>
+    <li><a href="#form"><em>06</em><b>Поиск ответов</b><span>Форумы и статьи по вашей проблеме</span></a></li>
+  </ul>
 </section>
 <section id="car3d" aria-label="Что умеет АвтоРешение">
   <div class="stage">
@@ -1217,24 +1257,10 @@ function esc(s){ const d = document.createElement("div"); d.textContent = s || "
     }, {enableHighAccuracy: true, timeout: 10000, maximumAge: 300000});
   });
 })();
-// Первый экран: при пролистывании прокручиваем кадры видео (плавно догоняя позицию прокрутки).
+// Первый экран: машина «разбирается» на детали после загрузки
 (function(){
-  const hero = document.getElementById("hero"); if (!hero) return;
-  const vid = hero.querySelector("video");
-  if (matchMedia("(prefers-reduced-motion: reduce)").matches) return;
-  vid.src = "hero.mp4?v=3";
-  let target = 0, cur = 0, raf = 0, ready = false;
-  vid.addEventListener("loadeddata", () => { ready = true; hero.querySelector(".poster").remove(); tick(); }, {once:true});
-  // iOS загружает кадры только после play(): запускаем и сразу ставим на паузу
-  const unlock = () => { const pr = vid.play(); if (pr) pr.then(() => vid.pause()).catch(() => {}); };
-  unlock(); addEventListener("touchstart", unlock, {once:true, passive:true});
-  const measure = () => { const r = hero.getBoundingClientRect(), span = hero.offsetHeight - innerHeight;
-    target = Math.max(0, Math.min(1, -r.top / Math.max(span, 1))); if (!raf) raf = requestAnimationFrame(tick); };
-  function tick(){ raf = 0; cur += (target - cur) * 0.18; if (Math.abs(target - cur) < 0.0005) cur = target;
-    hero.style.setProperty("--h", cur.toFixed(4));
-    if (ready && vid.duration) { const t = cur * (vid.duration - 0.05); if (Math.abs(vid.currentTime - t) > 0.02) vid.currentTime = t; }
-    if (cur !== target) raf = requestAnimationFrame(tick); }
-  addEventListener("scroll", measure, {passive:true}); addEventListener("resize", measure); measure();
+  const car = document.querySelector("#hero .xcar"); if (!car) return;
+  requestAnimationFrame(() => requestAnimationFrame(() => car.classList.add("go")));
 })();
 // Анимация при прокрутке: блоки плавно появляются, когда попадают в экран.
 // Новые блоки (результаты поиска, видео) подхватываются автоматически.
