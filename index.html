@@ -2,7 +2,7 @@
 <html lang="ru">
 <head>
 <meta charset="utf-8">
-<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover, interactive-widget=resizes-content">
 <title>АвтоРешение</title>
 <link rel="manifest" href="manifest.json">
 <link rel="icon" href="icon.svg" type="image/svg+xml">
@@ -12,6 +12,8 @@
 <meta property="og:description" content="Решения для вашего авто">
 <meta property="og:image" content="cover.jpg">
 <meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;600;700;800&family=JetBrains+Mono&display=swap">
 <style>
@@ -25,17 +27,18 @@
   --display:"Manrope",system-ui,-apple-system,"Segoe UI",sans-serif;
   --body:"Manrope",system-ui,-apple-system,"Segoe UI",sans-serif;
   --mono:"JetBrains Mono",ui-monospace,Menlo,Consolas,monospace;
+  --ease-out:cubic-bezier(.23,1,.32,1); --ease-in-out:cubic-bezier(.77,0,.175,1);
   color-scheme:dark;
 }
 *{box-sizing:border-box}
-html{background:var(--bg)}
-body{margin:0;min-height:100vh;color:var(--fg);font:16px/1.55 var(--body);
+html{background:var(--bg);-webkit-tap-highlight-color:transparent;-webkit-text-size-adjust:100%}
+body{margin:0;min-height:100vh;min-height:100dvh;color:var(--fg);font:16px/1.55 var(--body);
   background:
     radial-gradient(900px 600px at 85% -10%,rgba(45,110,255,.35),transparent 60%),
     radial-gradient(700px 500px at -10% 30%,rgba(30,80,200,.28),transparent 60%),
     radial-gradient(800px 600px at 50% 110%,rgba(20,60,160,.35),transparent 60%),
     linear-gradient(180deg,#0a1630 0%,#060d1f 60%,#050a18 100%) fixed;
-  padding:24px max(16px,env(safe-area-inset-right)) 56px max(16px,env(safe-area-inset-left))}
+  padding:calc(24px + env(safe-area-inset-top,0px)) max(16px,env(safe-area-inset-right)) calc(56px + env(safe-area-inset-bottom,0px)) max(16px,env(safe-area-inset-left))}
 /* «боке» огней на фоне */
 body::before{content:"";position:fixed;inset:0;z-index:-1;pointer-events:none;opacity:.55;
   background:
@@ -55,7 +58,7 @@ h2{font:700 1.25rem/1.25 var(--display);margin:0 0 12px;letter-spacing:-.005em}
   -webkit-backdrop-filter:blur(18px) saturate(140%);backdrop-filter:blur(18px) saturate(140%);
   box-shadow:inset 0 1px 0 rgba(255,255,255,.08),0 20px 50px rgba(0,0,0,.35)}
 label{display:block;font-size:.78rem;text-transform:uppercase;letter-spacing:.07em;color:var(--muted);margin-bottom:6px;font-weight:600}
-input,textarea,select{width:100%;font:inherit;color:var(--fg);background:var(--field);border:1px solid var(--line);border-radius:14px;padding:12px 14px;transition:border-color .15s,box-shadow .15s}
+input,textarea,select{width:100%;font:inherit;color:var(--fg);background:var(--field);border:1px solid var(--line);border-radius:14px;padding:12px 14px;transition:border-color .15s ease,box-shadow .15s ease}
 input::placeholder,textarea::placeholder{color:#6f81a6}
 select option{background:var(--panel-solid);color:var(--fg)}
 input:focus,textarea:focus,select:focus{outline:none;border-color:var(--accent);box-shadow:0 0 0 3px rgba(61,139,255,.25)}
@@ -70,13 +73,16 @@ textarea{min-height:90px;resize:vertical}
 @media (max-width:560px){.row{grid-template-columns:1fr 1fr}.row>div:last-child{grid-column:1/-1}.vinrow{grid-template-columns:1fr}.primary{width:100%}}
 .or{display:flex;align-items:center;gap:10px;color:var(--muted);font-size:.85rem}
 .or::before,.or::after{content:"";flex:1;border-top:1px solid var(--line)}
-button{font:700 1rem var(--body);border:0;border-radius:14px;padding:12px 20px;cursor:pointer;transition:transform .1s,box-shadow .15s,background .15s}
-button:active{transform:translateY(1px)}
+button{font:700 1rem var(--body);border:0;border-radius:14px;padding:12px 20px;cursor:pointer;transition:transform .16s var(--ease-out),box-shadow .15s ease,background-color .15s ease,border-color .15s ease}
+/* Нажимаемое: мгновенный отклик при касании, без задержки 300 мс и без выделения текста долгим нажатием */
+button,a,.saved,.chip.btn,label[for]{touch-action:manipulation}
+button,.chip.btn,.sos,.towlinks a,.primary{-webkit-user-select:none;user-select:none;-webkit-touch-callout:none}
+.src,.video,.saved,.towlinks a,.sos{transition:transform .16s var(--ease-out),border-color .15s ease,box-shadow .15s ease}
+button:active:not(:disabled),.sos:active,.towlinks a:active{transform:scale(.97)}
+.src:active,.video:active,.saved:active{transform:scale(.985)}
 .primary{background:linear-gradient(180deg,#4d97ff,var(--accent-2));color:var(--accent-ink);border-radius:999px;padding:13px 26px;box-shadow:var(--glow)}
-.primary:hover{box-shadow:0 0 0 1px rgba(120,175,255,.55),0 10px 34px rgba(50,120,255,.5)}
 .ghost{background:var(--chip);color:var(--fg);border:1px solid var(--line)}
-.ghost:hover{border-color:var(--line-hi);background:rgba(120,160,255,.16)}
-button:disabled{opacity:.55;cursor:wait}
+button:disabled{opacity:.55;cursor:not-allowed}
 .actions{display:flex;gap:10px;flex-wrap:wrap;align-items:center}
 .hint{font-size:.86rem;color:var(--muted)}
 .status{font-size:.9rem;color:var(--muted)}
@@ -95,7 +101,6 @@ button:disabled{opacity:.55;cursor:wait}
 #ai ol,#ai ul{margin:6px 0 0;padding-left:20px}
 .sources{display:grid;gap:10px;grid-template-columns:repeat(auto-fill,minmax(230px,1fr))}
 .src{display:block;background:rgba(10,22,48,.45);border:1px solid var(--line);border-radius:16px;padding:12px 14px;text-decoration:none;color:var(--fg);transition:border-color .15s,box-shadow .15s}
-.src:hover{border-color:var(--line-hi);box-shadow:0 0 20px rgba(60,130,255,.2)}
 .src b{display:block;color:#7cb4ff}
 .src span{font-size:.85rem;color:var(--muted)}
 .links a{display:inline-block;margin:4px 8px 4px 0;color:#7cb4ff;font-weight:700}
@@ -103,7 +108,6 @@ a{color:#7cb4ff}
 .videos{display:grid;gap:12px}
 .video{display:grid;grid-template-columns:200px 1fr;gap:14px;background:linear-gradient(180deg,rgba(60,95,170,.22),rgba(20,40,85,.28));border:1px solid var(--line);border-radius:20px;padding:12px;color:inherit;text-decoration:none;
   -webkit-backdrop-filter:blur(14px);backdrop-filter:blur(14px);transition:border-color .15s,box-shadow .15s}
-.video:hover{border-color:var(--line-hi);box-shadow:0 0 26px rgba(60,130,255,.22)}
 .video img{width:100%;aspect-ratio:16/9;object-fit:cover;border-radius:12px;background:var(--chip)}
 .video h3{font-size:1.02rem;margin:0 0 4px;line-height:1.3}
 .video .meta{font-size:.82rem;color:var(--muted);font-family:var(--mono)}
@@ -114,12 +118,11 @@ a{color:#7cb4ff}
 @media (max-width:560px){.video{grid-template-columns:1fr}.panel{padding:18px;border-radius:20px}}
 details summary{cursor:pointer;font-weight:700}
 .chip.btn{cursor:pointer;font:inherit;color:var(--fg)}
-.chip.btn:hover{border-color:var(--line-hi);background:rgba(120,160,255,.16)}
-#splash{position:fixed;inset:0;z-index:50;background:#0a1630 url(cover.jpg) center bottom/100% auto no-repeat;cursor:pointer;transition:opacity .5s}
+#splash{position:fixed;inset:0;z-index:50;background:#0a1630 url(cover.jpg) center bottom/100% auto no-repeat;cursor:pointer;transition:opacity .4s var(--ease-out)}
 @media (min-aspect-ratio:1080/1918){#splash{background-size:auto 100%}}
 #splash.hide{opacity:0;pointer-events:none}
 #splash button{position:absolute;top:calc(16px + env(safe-area-inset-top));right:calc(16px + env(safe-area-inset-right));background:rgba(10,20,45,.55);border:1px solid rgba(255,255,255,.2);color:#fff;font-size:.95rem;padding:9px 18px;border-radius:999px;-webkit-backdrop-filter:blur(10px);backdrop-filter:blur(10px)}
-@media (prefers-reduced-motion:reduce){#splash,button{transition:none}}
+@media (prefers-reduced-motion:reduce){#splash,button,.src,.video,.saved,.towlinks a,.sos{transition:none}button:active:not(:disabled),.src:active,.video:active,.saved:active,.sos:active,.towlinks a:active{transform:none}}
 .small{padding:8px 14px;font-size:.9rem}
 .chip .x{margin-left:6px;color:var(--muted);cursor:pointer;border:0;background:none;font:inherit;padding:0 2px}
 .chip.sel{border-color:var(--accent);background:rgba(61,139,255,.22);box-shadow:0 0 14px rgba(61,139,255,.35)}
@@ -130,7 +133,6 @@ details summary{cursor:pointer;font-weight:700}
 input[type=file]{padding:10px}
 input[type=file]::file-selector-button{font:600 .9rem var(--body);color:var(--fg);background:var(--chip);border:1px solid var(--line);border-radius:999px;padding:6px 14px;margin-right:10px;cursor:pointer}
 .saved{background:rgba(10,22,48,.45);border:1px solid var(--line);border-radius:16px;padding:12px 14px;cursor:pointer;text-align:left;color:var(--fg);font:inherit}
-.saved:hover{border-color:var(--line-hi)}
 .saved small{display:block;color:var(--muted);font-family:var(--mono);font-size:.8rem}
 .estrow{display:grid;grid-template-columns:1.4fr 1fr 1fr;gap:8px;padding:10px 0;border-bottom:1px solid var(--line);font-size:.92rem}
 .estrow>div{min-width:0}
@@ -144,10 +146,19 @@ input[type=file]::file-selector-button{font:600 .9rem var(--body);color:var(--fg
 #towlinks:empty{display:none}
 .towgroup b{display:block;margin-bottom:8px}
 .towlinks a{display:flex;align-items:center;justify-content:center;gap:8px;text-align:center;text-decoration:none;color:var(--fg);font-weight:700;background:var(--chip);border:1px solid var(--line);border-radius:14px;padding:10px 6px;font-size:.92rem}
-.towlinks a:hover{border-color:var(--line-hi);box-shadow:0 0 18px rgba(60,130,255,.25)}
 [data-ai][hidden]{display:none!important}
+/* Наведение — только для мыши: на телефоне подсветка «залипала» после касания */
+@media (hover:hover) and (pointer:fine){
+.primary:hover{box-shadow:0 0 0 1px rgba(120,175,255,.55),0 10px 34px rgba(50,120,255,.5)}
+.ghost:hover{border-color:var(--line-hi);background:rgba(120,160,255,.16)}
+.src:hover{border-color:var(--line-hi);box-shadow:0 0 20px rgba(60,130,255,.2)}
+.video:hover{border-color:var(--line-hi);box-shadow:0 0 26px rgba(60,130,255,.22)}
+.chip.btn:hover{border-color:var(--line-hi);background:rgba(120,160,255,.16)}
+.saved:hover{border-color:var(--line-hi)}
+.towlinks a:hover{border-color:var(--line-hi);box-shadow:0 0 18px rgba(60,130,255,.25)}
+}
 /* Появление блоков при прокрутке */
-.reveal{opacity:0;transform:translateY(28px) scale(.985);filter:blur(4px);transition:opacity .7s cubic-bezier(.2,.7,.2,1),transform .7s cubic-bezier(.2,.7,.2,1),filter .7s;transition-delay:var(--d,0s)}
+.reveal{opacity:0;transform:translateY(14px);filter:blur(2px);transition:opacity .5s var(--ease-out),transform .5s var(--ease-out),filter .5s var(--ease-out);transition-delay:var(--d,0s)}
 .reveal.in{opacity:1;transform:none;filter:none}
 #progress{position:fixed;top:0;left:0;height:3px;width:100%;z-index:40;transform-origin:0 50%;transform:scaleX(0);background:linear-gradient(90deg,#3d8bff,#7cc0ff);box-shadow:0 0 12px rgba(80,150,255,.8)}
 @media (prefers-reduced-motion:reduce){.reveal{opacity:1;transform:none;filter:none;transition:none}}
@@ -180,7 +191,7 @@ input[type=file]::file-selector-button{font:600 .9rem var(--body);color:var(--fg
       <span class="hint" id="nocars">Сохраните машину, чтобы не вводить её каждый раз.</span></div>
     <div class="vinrow">
       <div><label for="vin">VIN-код или номер кузова</label>
-        <input id="vin" maxlength="20" placeholder="JTDBR32E720123456 или NZE121-0123456"></div>
+        <input id="vin" maxlength="20" autocapitalize="characters" autocorrect="off" autocomplete="off" spellcheck="false" enterkeyhint="search" placeholder="JTDBR32E720123456 или NZE121-0123456"></div>
       <button type="button" class="ghost" id="decode">Расшифровать</button>
     </div>
     <div class="actions">
@@ -195,7 +206,7 @@ input[type=file]::file-selector-button{font:600 .9rem var(--body);color:var(--fg
     <div class="row">
       <div><label for="make">Марка</label><input id="make" placeholder="Toyota"></div>
       <div><label for="model">Модель</label><input id="model" placeholder="Camry"></div>
-      <div><label for="year">Год</label><input id="year" inputmode="numeric" maxlength="4" placeholder="2012"></div>
+      <div><label for="year">Год</label><input id="year" inputmode="numeric" pattern="[0-9]*" enterkeyhint="next" maxlength="4" placeholder="2012"></div>
     </div>
     <div><button type="button" class="ghost small" id="savecar">+ Сохранить машину в гараж</button></div>
     <div><label for="problem">Что случилось</label>
@@ -207,7 +218,7 @@ input[type=file]::file-selector-button{font:600 .9rem var(--body);color:var(--fg
         <select id="when"><option value="">Всегда</option><option>при запуске двигателя</option><option>на холодную</option><option>на холостых оборотах</option><option>при разгоне</option><option>при торможении</option><option>на кочках</option><option>при повороте руля</option><option>при переключении передач</option><option>при включении кондиционера</option></select></div>
     </div>
     <div class="row2">
-      <div><label for="codes">Коды ошибок, если есть</label><input id="codes" placeholder="P0300, P0171"></div>
+      <div><label for="codes">Коды ошибок, если есть</label><input id="codes" autocapitalize="characters" autocorrect="off" autocomplete="off" spellcheck="false" placeholder="P0300, P0171"></div>
       <div><label for="city">Город (для цен)</label><input id="city" placeholder="Москва"></div>
     </div>
     <div class="codeinfo" id="codeinfo" hidden></div>
@@ -227,9 +238,9 @@ input[type=file]::file-selector-button{font:600 .9rem var(--body);color:var(--fg
     <details>
       <summary>Настройки</summary>
       <div class="grid" style="margin-top:10px">
-        <div data-ai><label for="aiurl">Адрес сервера ИИ-сводки</label><input id="aiurl" placeholder="https://avto-reshenie.….workers.dev"></div>
+        <div data-ai><label for="aiurl">Адрес сервера ИИ-сводки</label><input id="aiurl" type="url" autocapitalize="none" autocorrect="off" spellcheck="false" placeholder="https://avto-reshenie.….workers.dev"></div>
         <div class="hint" id="substatus" data-ai></div>
-        <div><label for="apikey">YouTube Data API v3 key</label><input id="apikey" placeholder="AIza…"></div>
+        <div><label for="apikey">YouTube Data API v3 key</label><input id="apikey" autocapitalize="none" autocorrect="off" autocomplete="off" spellcheck="false" placeholder="AIza…"></div>
         <div class="hint">Ключ хранится только в этом браузере. Бесплатно: 10 000 единиц в день, это около 90 поисков. Получить ключ: Google Cloud Console → APIs &amp; Services → включить «YouTube Data API v3» → Credentials → Create API key. Без ключа приложение покажет готовые ссылки на поиск в YouTube.</div>
       </div>
     </details>
@@ -1054,16 +1065,20 @@ function esc(s){ const d = document.createElement("div"); d.textContent = s || "
   if (matchMedia("(prefers-reduced-motion: reduce)").matches || !("IntersectionObserver" in window)) return;
   const SEL = ".wrap > .panel, .wrap > header, .video, .src, .cause, .saved, .estrow";
   const io = new IntersectionObserver(es => es.forEach(e => {
-    if (e.isIntersecting) { e.target.classList.add("in"); io.unobserve(e.target); }
+    if (!e.isIntersecting) return;
+    const el = e.target; io.unobserve(el); el.classList.add("in");
+    // после появления убираем служебные классы, чтобы вернулись быстрые отклики на нажатие
+    const d = parseFloat(el.style.getPropertyValue("--d")) || 0;
+    setTimeout(() => { el.classList.remove("reveal", "in"); el.style.removeProperty("--d"); el.dataset.shown = "1"; }, 560 + d * 1000);
   }), {rootMargin:"0px 0px -8% 0px", threshold:.08});
   const attach = root => {
     const list = [];
     if (root.matches && root.matches(SEL)) list.push(root);
     if (root.querySelectorAll) list.push(...root.querySelectorAll(SEL));
     list.forEach(el => {
-      if (el.classList.contains("reveal")) return;
+      if (el.classList.contains("reveal") || el.dataset.shown) return;
       const sib = el.parentElement ? [...el.parentElement.children].indexOf(el) : 0;
-      el.style.setProperty("--d", Math.min(sib, 6) * 0.06 + "s");
+      el.style.setProperty("--d", Math.min(sib, 5) * 0.05 + "s");
       el.classList.add("reveal"); io.observe(el);
     });
   };
