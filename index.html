@@ -148,7 +148,7 @@ input[type=file]::file-selector-button{font:600 .9rem var(--body);color:var(--fg
 #hero{position:relative;height:260svh;margin:calc(-24px - env(safe-area-inset-top,0px)) calc(-1*max(16px,env(safe-area-inset-right))) 8px calc(-1*max(16px,env(safe-area-inset-left)));--h:0}
 #hero .stage{position:sticky;top:0;height:100svh;overflow:hidden;background:#05070d}
 #hero video,#hero .poster{position:absolute;inset:0;width:100%;height:100%;object-fit:cover}
-#hero .poster{background:#05070d url(hero.jpg) center/cover}
+#hero .poster{background:#05070d url(hero.jpg?v=2) center/cover}
 #hero .shade{position:absolute;inset:0;background:linear-gradient(180deg,rgba(5,8,18,.55) 0%,rgba(5,8,18,0) 30%,rgba(5,8,18,0) 55%,rgba(6,13,31,.92) 100%)}
 #hero .hud{position:absolute;left:max(20px,env(safe-area-inset-left));right:max(20px,env(safe-area-inset-right));color:#fff}
 #hero .top{top:calc(18px + env(safe-area-inset-top,0px));display:flex;justify-content:space-between;align-items:center;font:500 .72rem var(--mono);letter-spacing:.14em;text-transform:uppercase;color:rgba(255,255,255,.75)}
@@ -190,7 +190,7 @@ input[type=file]::file-selector-button{font:600 .9rem var(--body);color:var(--fg
 <section id="hero" aria-label="АвтоРешение">
   <div class="stage">
     <div class="poster"></div>
-    <video muted playsinline preload="auto" poster="hero.jpg" aria-hidden="true"></video>
+    <video muted playsinline preload="auto" poster="hero.jpg?v=2" aria-hidden="true"></video>
     <div class="shade"></div>
     <div class="hud top"><b>Авто<span>Решение</span></b><span>помощь водителю</span></div>
     <div class="hud ttl"><small>// диагностика · ремонт · помощь</small><h2>Найдём<br><i>решение</i><br>для вашего<br>авто</h2></div>
@@ -1087,7 +1087,7 @@ function esc(s){ const d = document.createElement("div"); d.textContent = s || "
   const hero = document.getElementById("hero"); if (!hero) return;
   const vid = hero.querySelector("video");
   if (matchMedia("(prefers-reduced-motion: reduce)").matches) return;
-  vid.src = "hero.mp4";
+  vid.src = "hero.mp4?v=2";
   let target = 0, cur = 0, raf = 0, ready = false;
   vid.addEventListener("loadeddata", () => { ready = true; hero.querySelector(".poster").remove(); tick(); }, {once:true});
   // iOS загружает кадры только после play(): запускаем и сразу ставим на паузу
