@@ -184,9 +184,11 @@ input[type=file]::file-selector-button{font:600 .9rem var(--body);color:var(--fg
       <button type="button" class="ghost" id="decode">Расшифровать</button>
     </div>
     <div class="actions">
-      <button type="button" class="ghost small" id="vinphotobtn" onclick="document.getElementById('vinphoto').click()">📷 VIN по фото СТС или ПТС</button>
+      <button type="button" class="ghost small" id="vinphotobtn" onclick="document.getElementById('vincam').click()">📷 Сфотографировать СТС или ПТС</button>
+      <button type="button" class="ghost small" id="vingallery" onclick="document.getElementById('vinphoto').click()">🖼 Фото из галереи</button>
+      <input type="file" id="vincam" accept="image/*" capture="environment" hidden>
       <input type="file" id="vinphoto" accept="image/*" hidden>
-      <span class="hint">Фото не отправляется в интернет, текст распознаётся прямо на телефоне.</span>
+      <span class="hint">Наведите камеру на строку с VIN. Фото не отправляется в интернет, текст распознаётся прямо на телефоне.</span>
     </div>
     <div class="car" id="carinfo" hidden></div>
     <div class="or">или вручную</div>
@@ -708,10 +710,10 @@ function frameCandidates(text){
   }
   return out;
 }
-$("vinphoto").addEventListener("change", async e => {
+async function onVinPhoto(e){
   const file = e.target.files[0]; e.target.value = "";
   if (!file) return;
-  const btn = $("vinphotobtn"); btn.disabled = true; $("carinfo").hidden = true;
+  const btns = [$("vinphotobtn"), $("vingallery")]; btns.forEach(b => b.disabled = true); $("carinfo").hidden = true;
   setStatus("Загружаю распознавание (первый раз около 7 МБ)…");
   try {
     const w = await getOcr(p => setStatus(`Ищу VIN на фото… ${p}%`));
@@ -734,8 +736,10 @@ $("vinphoto").addEventListener("change", async e => {
     $("carinfo").querySelectorAll("[data-ocr]").forEach(b => b.addEventListener("click", () => use(b.dataset.ocr)));
   } catch(err) {
     setStatus("Не получилось распознать фото (" + err.message + "). Введите VIN вручную.", true);
-  } finally { btn.disabled = false; }
-});
+  } finally { btns.forEach(b => b.disabled = false); }
+}
+$("vincam").addEventListener("change", onVinPhoto);
+$("vinphoto").addEventListener("change", onVinPhoto);
 
 // Нет VIN: пробуем как номер кузова японской машины
 function decodeFrame(raw){
