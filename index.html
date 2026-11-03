@@ -118,11 +118,7 @@ a{color:#7cb4ff}
 @media (max-width:560px){.video{grid-template-columns:1fr}.panel{padding:18px;border-radius:20px}}
 details summary{cursor:pointer;font-weight:700}
 .chip.btn{cursor:pointer;font:inherit;color:var(--fg)}
-#splash{position:fixed;inset:0;z-index:50;background:#0a1630 url(cover.jpg) center bottom/100% auto no-repeat;cursor:pointer;transition:opacity .4s var(--ease-out)}
-@media (min-aspect-ratio:1080/1918){#splash{background-size:auto 100%}}
-#splash.hide{opacity:0;pointer-events:none}
-#splash button{position:absolute;top:calc(16px + env(safe-area-inset-top));right:calc(16px + env(safe-area-inset-right));background:rgba(10,20,45,.55);border:1px solid rgba(255,255,255,.2);color:#fff;font-size:.95rem;padding:9px 18px;border-radius:999px;-webkit-backdrop-filter:blur(10px);backdrop-filter:blur(10px)}
-@media (prefers-reduced-motion:reduce){#splash,button,.src,.video,.saved,.towlinks a,.sos{transition:none}button:active:not(:disabled),.src:active,.video:active,.saved:active,.sos:active,.towlinks a:active{transform:none}}
+@media (prefers-reduced-motion:reduce){button,.src,.video,.saved,.towlinks a,.sos{transition:none}button:active:not(:disabled),.src:active,.video:active,.saved:active,.sos:active,.towlinks a:active{transform:none}}
 .small{padding:8px 14px;font-size:.9rem}
 .chip .x{margin-left:6px;color:var(--muted);cursor:pointer;border:0;background:none;font:inherit;padding:0 2px}
 .chip.sel{border-color:var(--accent);background:rgba(61,139,255,.22);box-shadow:0 0 14px rgba(61,139,255,.35)}
@@ -165,7 +161,6 @@ input[type=file]::file-selector-button{font:600 .9rem var(--body);color:var(--fg
 </style>
 </head>
 <body>
-<div id="splash" role="dialog" aria-label="АвтоРешение"><button type="button" id="start">Пропустить</button></div>
 <div id="progress" aria-hidden="true"></div>
 <div class="wrap">
   <header>
@@ -809,8 +804,6 @@ renderHistory(); renderGarage(); loadStatus();
   if (q === "1") setTimeout(loadStatus, 5000);
 })();
 // Обложка: показываем при каждом открытии, скрываем по нажатию или через 3 секунды
-(function(){ const sp = $("splash"); const hide = () => { sp.classList.add("hide"); setTimeout(() => sp.hidden = true, 600); };
-  sp.addEventListener("click", hide); setTimeout(hide, 3000); })();
 if ("serviceWorker" in navigator && location.protocol.startsWith("http")) navigator.serviceWorker.register("sw.js").catch(() => {});
 
 function setStatus(t, err){ $("status").textContent = t; $("status").className = "status" + (err ? " err" : ""); }
