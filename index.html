@@ -168,6 +168,31 @@ input[type=file]::file-selector-button{font:600 .9rem var(--body);color:var(--fg
 #hero .hint::before{content:"";width:18px;height:28px;border:1.5px solid rgba(255,255,255,.6);border-radius:10px;background:radial-gradient(circle at 50% 30%,#fff 0 2px,transparent 3px)}
 #hero .bar{position:absolute;left:0;bottom:0;height:2px;width:100%;transform-origin:0 50%;transform:scaleX(var(--h));background:#5fd0ff;box-shadow:0 0 10px #5fd0ff}
 @media (prefers-reduced-motion:reduce){#hero{height:100svh}#hero video{display:none}#hero .cap{display:none}#hero .ttl,#hero .hint{opacity:1;transform:none}}
+/* 3D-машина: при прокрутке камера облетает машину, надписи сменяются (как в презентациях концепт-каров) */
+#car3d{position:relative;height:320svh;margin:0 calc(-1*max(16px,env(safe-area-inset-right))) 8px calc(-1*max(16px,env(safe-area-inset-left)));--p:0}
+#car3d .stage{position:sticky;top:0;height:100svh;overflow:hidden;background:radial-gradient(120% 70% at 50% 62%,#0b1a33 0%,#04070f 60%,#020409 100%)}
+#car3d canvas{position:absolute;inset:0;width:100%;height:100%;display:block;opacity:0;transition:opacity .8s var(--ease-out)}
+#car3d.ready canvas{opacity:1}
+#car3d .grid3d{position:absolute;inset:0;pointer-events:none;background:linear-gradient(rgba(95,208,255,.05) 1px,transparent 1px) 0 0/100% 48px,linear-gradient(90deg,rgba(95,208,255,.05) 1px,transparent 1px) 0 0/48px 100%;mask:linear-gradient(180deg,#000 0%,transparent 45%)}
+#car3d .hud{position:absolute;left:max(20px,env(safe-area-inset-left));right:max(20px,env(safe-area-inset-right));color:#fff;pointer-events:none}
+#car3d .top{top:calc(18px + env(safe-area-inset-top,0px));display:flex;justify-content:space-between;font:500 .68rem var(--mono);letter-spacing:.16em;text-transform:uppercase;color:rgba(255,255,255,.6)}
+#car3d .top b{color:#5fd0ff;font-weight:500}
+#car3d .scene{top:calc(13svh + env(safe-area-inset-top,0px));opacity:0;transform:translateY(16px);transition:opacity .45s var(--ease-out),transform .45s var(--ease-out)}
+#car3d .scene.on{opacity:1;transform:none}
+#car3d .scene small{display:block;font:500 .7rem var(--mono);letter-spacing:.2em;color:#5fd0ff;margin-bottom:8px}
+#car3d .scene h3{font:800 clamp(2.2rem,11vw,4.6rem)/.9 var(--display);letter-spacing:-.02em;text-transform:uppercase;margin:0 0 10px;text-shadow:0 0 28px rgba(95,208,255,.35)}
+#car3d .scene h3 i{font-style:normal;color:#5fd0ff}
+#car3d .scene p{margin:0;max-width:30ch;color:rgba(255,255,255,.72);font-size:.92rem}
+#car3d .specs{bottom:calc(64px + env(safe-area-inset-bottom,0px));display:grid;grid-template-columns:repeat(4,1fr);gap:8px;border-top:1px solid rgba(95,208,255,.25);padding-top:12px}
+#car3d .specs div{font:500 .6rem var(--mono);letter-spacing:.1em;text-transform:uppercase;color:rgba(255,255,255,.55)}
+#car3d .specs b{display:block;font:700 1.05rem var(--mono);letter-spacing:0;color:#fff;margin-bottom:2px;font-variant-numeric:tabular-nums}
+#car3d .credit{bottom:calc(14px + env(safe-area-inset-bottom,0px));font:400 .58rem var(--mono);color:rgba(255,255,255,.35);pointer-events:auto}
+#car3d .credit a{color:inherit}
+#car3d .dots{position:absolute;right:max(14px,env(safe-area-inset-right));top:50%;transform:translateY(-50%);display:grid;gap:10px}
+#car3d .dots i{width:6px;height:6px;border-radius:50%;background:rgba(255,255,255,.25);transition:background .3s,box-shadow .3s}
+#car3d .dots i.on{background:#5fd0ff;box-shadow:0 0 10px #5fd0ff}
+#car3d .bar{position:absolute;left:0;bottom:0;height:2px;width:100%;transform-origin:0 50%;transform:scaleX(var(--p));background:#5fd0ff;box-shadow:0 0 10px #5fd0ff}
+@media (prefers-reduced-motion:reduce){#car3d{height:auto}#car3d .stage{position:relative}#car3d .scene{transition:none}}
 /* Наведение — только для мыши: на телефоне подсветка «залипала» после касания */
 @media (hover:hover) and (pointer:fine){
 .primary:hover{box-shadow:0 0 0 1px rgba(120,175,255,.55),0 10px 34px rgba(50,120,255,.5)}
@@ -197,6 +222,19 @@ input[type=file]::file-selector-button{font:600 .9rem var(--body);color:var(--fg
     <div class="hud cap"><h3>VIN, коды<br>и видео</h3><p>Расшифруем VIN по фото документов, объясним код ошибки и подберём ролики с ремонтом именно вашей машины.</p></div>
     <div class="hud stats"><div><b>VIN</b>по фото</div><div><b>OBD</b>коды</div><div><b>YT</b>видео</div><div><b>112</b>эвакуатор</div></div>
     <div class="hud hint">листайте вниз</div>
+    <div class="bar"></div>
+  </div>
+</section>
+<section id="car3d" aria-label="Что умеет АвтоРешение">
+  <div class="stage">
+    <div class="grid3d"></div>
+    <div class="hud top"><span>АвтоРешение <b>// 360°</b></span><span class="sc">01 / 03</span></div>
+    <div class="hud scene on"><small>// 01 · документы</small><h3>VIN<br><i>по фото</i></h3><p>Сфотографируйте СТС или ПТС: прочитаем VIN и узнаем марку, модель, год и двигатель.</p></div>
+    <div class="hud scene"><small>// 02 · диагностика</small><h3>Коды<br><i>OBD-II</i></h3><p>Введите код ошибки с панели или сканера: объясним, что сломалось и насколько это срочно.</p></div>
+    <div class="hud scene"><small>// 03 · ремонт</small><h3>Видео<br><i>ремонта</i></h3><p>Подберём ролики с ремонтом именно вашей машины и коротко перескажем, что делать.</p></div>
+    <div class="hud specs"><div><b class="n0">17</b>знаков VIN</div><div><b class="n1">P0</b>коды</div><div><b class="n2">YT</b>видео</div><div><b>24/7</b>онлайн</div></div>
+    <div class="hud credit">3D-модель: <a href="https://sketchfab.com/models/57bf6cc56931426e87494f554df1dab6" target="_blank" rel="noopener">Ferrari 458 Italia, vicent091036</a>, CC BY 4.0</div>
+    <div class="dots" aria-hidden="true"><i class="on"></i><i></i><i></i></div>
     <div class="bar"></div>
   </div>
 </section>
@@ -1134,6 +1172,121 @@ function esc(s){ const d = document.createElement("div"); d.textContent = s || "
   new MutationObserver(ms => ms.forEach(m => m.addedNodes.forEach(n => n.nodeType === 1 && attach(n))))
     .observe(document.querySelector(".wrap"), {childList:true, subtree:true});
 })();
+</script>
+<script type="importmap">{"imports":{"three":"https://cdn.jsdelivr.net/npm/three@0.160.0/build/three.module.js","three/addons/":"https://cdn.jsdelivr.net/npm/three@0.160.0/examples/jsm/"}}</script>
+<script type="module">
+// 3D-машина: three.js грузится только когда блок рядом с экраном; прокрутка двигает камеру по трём ракурсам.
+const sec = document.getElementById("car3d");
+const scenes = [...sec.querySelectorAll(".scene")], dots = [...sec.querySelectorAll(".dots i")], counter = sec.querySelector(".sc");
+const still = matchMedia("(prefers-reduced-motion: reduce)").matches;
+let target = 0, cur = 0, shown = 0;
+const measure = () => { const r = sec.getBoundingClientRect(), span = sec.offsetHeight - innerHeight;
+  target = still ? 0 : Math.max(0, Math.min(1, -r.top / Math.max(span, 1))); };
+addEventListener("scroll", measure, {passive:true}); addEventListener("resize", measure); measure();
+const setScene = i => { if (i === shown) return; shown = i;
+  scenes.forEach((s, k) => s.classList.toggle("on", k === i)); dots.forEach((d, k) => d.classList.toggle("on", k === i));
+  counter.textContent = "0" + (i + 1) + " / 03"; };
+
+new IntersectionObserver((es, io) => { if (es.some(e => e.isIntersecting)) { io.disconnect(); start().catch(() => {}); } },
+  {rootMargin: "800px 0px"}).observe(sec);
+
+async function start(){
+  const THREE = await import("three");
+  const {GLTFLoader} = await import("three/addons/loaders/GLTFLoader.js");
+  const {DRACOLoader} = await import("three/addons/loaders/DRACOLoader.js");
+  const {RoomEnvironment} = await import("three/addons/environments/RoomEnvironment.js");
+  const {EffectComposer} = await import("three/addons/postprocessing/EffectComposer.js");
+  const {RenderPass} = await import("three/addons/postprocessing/RenderPass.js");
+  const {UnrealBloomPass} = await import("three/addons/postprocessing/UnrealBloomPass.js");
+  const {OutputPass} = await import("three/addons/postprocessing/OutputPass.js");
+
+  const stage = sec.querySelector(".stage");
+  const renderer = new THREE.WebGLRenderer({antialias: true, alpha: true, powerPreference: "high-performance"});
+  renderer.setPixelRatio(Math.min(devicePixelRatio, 1.75));
+  renderer.toneMapping = THREE.ACESFilmicToneMapping; renderer.toneMappingExposure = 0.7;
+  stage.prepend(renderer.domElement);
+
+  const scene = new THREE.Scene();
+  scene.fog = new THREE.Fog(0x03060d, 9, 22);
+  const pmrem = new THREE.PMREMGenerator(renderer);
+  scene.environment = pmrem.fromScene(new RoomEnvironment(renderer), 0.04).texture;
+  const camera = new THREE.PerspectiveCamera(36, 1, 0.1, 60);
+
+  // Пол: тёмное «зеркало» с неоновым кольцом и сеткой
+  const floor = new THREE.Mesh(new THREE.CircleGeometry(14, 64), new THREE.MeshStandardMaterial({color: 0x050a14, metalness: 0.5, roughness: 0.55, envMapIntensity: 0.12}));
+  floor.rotation.x = -Math.PI / 2; scene.add(floor);
+  const neon = new THREE.MeshBasicMaterial({color: 0x5fd0ff});
+  const ring = new THREE.Mesh(new THREE.RingGeometry(3.05, 3.12, 128), neon);
+  ring.rotation.x = -Math.PI / 2; ring.position.y = 0.005; scene.add(ring);
+  const grid = new THREE.GridHelper(28, 56, 0x16405e, 0x0b2236); grid.position.y = 0.002;
+  grid.material.transparent = true; grid.material.opacity = 0.5; scene.add(grid);
+
+  // Световые полосы за машиной (как неоновые трубки в студии)
+  const streaks = new THREE.Group();
+  [[-6, 3.2, -8, 0.5], [6.5, 3.8, -7.5, -0.6], [0.5, 5.5, -9.5, 1.35], [-2.5, 1.6, -10, -0.25]].forEach(([x, y, z, rz]) => {
+    const m = new THREE.Mesh(new THREE.BoxGeometry(7, 0.05, 0.05), new THREE.MeshBasicMaterial({color: 0xbfeeff}));
+    m.position.set(x, y, z); m.rotation.z = rz; streaks.add(m); });
+  scene.add(streaks);
+
+  // Свет: холодный контровой + голубые акценты по бокам
+  scene.add(new THREE.HemisphereLight(0x8fb8ff, 0x05070d, 0.25));
+  const key = new THREE.SpotLight(0xffffff, 18, 20, 0.6, 0.6); key.position.set(3, 7, 4); scene.add(key);
+  const rimL = new THREE.PointLight(0x2fb8ff, 10, 10); rimL.position.set(-3.5, 1.2, -1.5); scene.add(rimL);
+  const rimR = new THREE.PointLight(0x5fd0ff, 7, 10); rimR.position.set(3.5, 0.8, 2.5); scene.add(rimR);
+
+  const draco = new DRACOLoader(); draco.setDecoderPath("https://cdn.jsdelivr.net/npm/three@0.160.0/examples/jsm/libs/draco/gltf/");
+  const loader = new GLTFLoader(); loader.setDRACOLoader(draco);
+  const gltf = await loader.loadAsync("car.glb");
+  const car = gltf.scene.children[0];
+  const body = new THREE.MeshPhysicalMaterial({color: 0x0c0f16, metalness: 0.9, roughness: 0.32, clearcoat: 1, clearcoatRoughness: 0.03, envMapIntensity: 0.45});
+  const details = new THREE.MeshStandardMaterial({color: 0x9aa6b8, metalness: 1, roughness: 0.35, envMapIntensity: 0.5});
+  const glass = new THREE.MeshPhysicalMaterial({color: 0x0a1626, metalness: 0.2, roughness: 0, transmission: 0.6, transparent: true});
+  car.getObjectByName("body").material = body;
+  ["rim_fl", "rim_fr", "rim_rr", "rim_rl", "trim"].forEach(n => { const o = car.getObjectByName(n); if (o) o.material = details; });
+  car.getObjectByName("glass").material = glass;
+  const wheels = ["wheel_fl", "wheel_fr", "wheel_rl", "wheel_rr"].map(n => car.getObjectByName(n)).filter(Boolean);
+  scene.add(car);
+
+  const composer = new EffectComposer(renderer);
+  composer.addPass(new RenderPass(scene, camera));
+  const bloom = new UnrealBloomPass(new THREE.Vector2(256, 256), 0.7, 0.4, 0.92); composer.addPass(bloom);
+  composer.addPass(new OutputPass());
+
+  // Ракурсы: [позиция камеры, точка взгляда]. Между ними камера плавно переходит.
+  const V = (x, y, z) => new THREE.Vector3(x, y, z);
+  const shots = [[V(-4.6, 1.5, 5.2), V(0, 0.45, 0)], [V(2.9, 0.6, 3.2), V(1.0, 0.35, 1.3)], [V(4.6, 2.0, -4.6), V(0, 0.45, 0)]];
+  const pos = V(), look = V();
+  const ease = t => t * t * (3 - 2 * t);
+
+  const size = () => { const w = stage.clientWidth, h = stage.clientHeight;
+    renderer.setSize(w, h, false); composer.setSize(w, h); bloom.resolution.set(w / 2, h / 2);
+    camera.aspect = w / h; camera.fov = w / h < 0.8 ? 52 : 36;
+    // на широком экране сдвигаем машину вправо, чтобы она не закрывала текст слева
+    if (w / h > 1.1) camera.setViewOffset(w, h, -w * 0.17, 0, w, h); else camera.clearViewOffset();
+    camera.updateProjectionMatrix(); };
+  addEventListener("resize", size); size();
+
+  let visible = true;
+  new IntersectionObserver(es => { visible = es[0].isIntersecting; }).observe(sec);
+  const clock = new THREE.Clock();
+  sec.classList.add("ready");
+  (function frame(){
+    requestAnimationFrame(frame);
+    if (!visible) return;
+    const dt = clock.getDelta(), t = clock.elapsedTime;
+    cur += (target - cur) * Math.min(1, dt * 6);
+    sec.style.setProperty("--p", cur.toFixed(4));
+    setScene(Math.min(2, Math.floor(cur * 3 * 0.999 + 0.0001)));
+    const f = cur * 2, i = Math.min(1, Math.floor(f)), k = ease(Math.min(1, f - i));
+    pos.lerpVectors(shots[i][0], shots[i + 1][0], k); look.lerpVectors(shots[i][1], shots[i + 1][1], k);
+    pos.sub(look).multiplyScalar(camera.aspect < 0.8 ? 1.45 : 1.15).add(look); // на телефоне отходим дальше, чтобы машина влезла
+    if (!still) pos.y += Math.sin(t * 0.6) * 0.04;
+    camera.position.copy(pos); camera.lookAt(look);
+    wheels.forEach(w => w.rotation.x = -cur * 12);
+    ring.material.color.setHSL(0.54, 1, 0.62 + Math.sin(t * 2) * 0.06);
+    composer.render();
+  })();
+}
 </script>
 </body>
 </html>
