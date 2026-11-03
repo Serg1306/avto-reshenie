@@ -210,6 +210,49 @@ input[type=file]::file-selector-button{font:600 .9rem var(--body);color:var(--fg
 .reveal.in{opacity:1;transform:none;filter:none}
 #progress{position:fixed;top:0;left:0;height:3px;width:100%;z-index:40;transform-origin:0 50%;transform:scaleX(0);background:linear-gradient(90deg,#3d8bff,#7cc0ff);box-shadow:0 0 12px rgba(80,150,255,.8)}
 @media (prefers-reduced-motion:reduce){.reveal{opacity:1;transform:none;filter:none;transition:none}}
+
+/* ===== HUD-стиль для блоков ниже героя (в тон верху сайта) ===== */
+:root{--accent:#5fd0ff;--accent-2:#2aa9e8;--accent-ink:#031019;--hud:#5fd0ff;--hud-line:rgba(95,208,255,.2);--hud-dim:rgba(140,220,255,.8);
+  --field:rgba(3,8,18,.75);--line:rgba(95,208,255,.16);--line-hi:rgba(95,208,255,.5);--chip:rgba(95,208,255,.07);
+  --glow:0 0 0 1px rgba(95,208,255,.55),0 0 26px rgba(95,208,255,.35)}
+.wrap{position:relative;gap:28px}
+.wrap>.panel{position:relative;border-radius:4px;padding:26px 22px 24px;
+  background:linear-gradient(180deg,rgba(7,14,28,.92),rgba(4,8,17,.94));border:1px solid var(--hud-line);
+  -webkit-backdrop-filter:none;backdrop-filter:none;
+  box-shadow:inset 0 1px 0 rgba(95,208,255,.08),0 0 0 1px rgba(0,0,0,.4),0 30px 60px rgba(0,0,0,.45)}
+/* уголки-скобки как в прицеле */
+.wrap>.panel::before,.wrap>.panel::after{content:"";position:absolute;width:18px;height:18px;pointer-events:none;border:2px solid var(--hud)}
+.wrap>.panel::before{top:-1px;left:-1px;border-right:0;border-bottom:0}
+.wrap>.panel::after{bottom:-1px;right:-1px;border-left:0;border-top:0}
+.idx{font:500 .72rem/1 var(--mono);letter-spacing:.22em;text-transform:uppercase;color:var(--hud);display:flex;align-items:center;gap:10px}
+.idx::after{content:"";flex:1;height:1px;background:linear-gradient(90deg,var(--hud-line),transparent)}
+.wrap h2{font:800 clamp(1.7rem,6vw,2.4rem)/1.02 var(--display);text-transform:uppercase;letter-spacing:-.01em;margin:0}
+.wrap h2 i{font-style:normal;color:var(--hud);text-shadow:0 0 22px rgba(95,208,255,.55)}
+.wrap label{font:500 .7rem/1.2 var(--mono);letter-spacing:.18em;color:var(--hud-dim);margin-bottom:8px}
+.wrap label::before{content:"▸ ";color:var(--hud)}
+.wrap input,.wrap textarea,.wrap select{border-radius:4px;background:var(--field);border:1px solid var(--line);padding:13px 14px}
+.wrap input::placeholder,.wrap textarea::placeholder{color:#4d6585}
+.wrap input:focus,.wrap textarea:focus,.wrap select:focus{border-color:var(--hud);box-shadow:0 0 0 1px var(--hud),0 0 22px rgba(95,208,255,.28)}
+.wrap select{-webkit-appearance:none;appearance:none;padding-right:38px;
+  background-image:linear-gradient(45deg,transparent 50%,var(--hud) 50%),linear-gradient(135deg,var(--hud) 50%,transparent 50%);
+  background-position:calc(100% - 20px) 50%,calc(100% - 14px) 50%;background-size:6px 6px;background-repeat:no-repeat}
+.wrap .primary{border-radius:4px;background:var(--hud);color:var(--accent-ink);font:700 .9rem var(--mono);letter-spacing:.14em;text-transform:uppercase;padding:15px 24px;box-shadow:var(--glow)}
+.wrap .ghost{border-radius:4px;background:transparent;color:var(--hud);border:1px solid var(--line-hi);font:600 .82rem var(--mono);letter-spacing:.08em}
+.wrap .chip{border-radius:4px}
+.wrap .chip.sel{border-color:var(--hud);background:rgba(95,208,255,.14);box-shadow:0 0 14px rgba(95,208,255,.3)}
+.wrap .or{font:500 .7rem var(--mono);letter-spacing:.2em;text-transform:uppercase;color:var(--hud-dim)}
+.wrap .or::before,.wrap .or::after{border-top-color:var(--hud-line)}
+.wrap .hint{color:#7f93b4}
+.wrap .towlinks a{border-radius:4px;background:rgba(95,208,255,.05);border-color:var(--line)}
+.wrap .sos{border-radius:4px;font:700 .8rem var(--mono);letter-spacing:.1em;text-transform:uppercase;padding:11px 14px}
+.wrap details summary{font:500 .72rem var(--mono);letter-spacing:.18em;text-transform:uppercase;color:var(--hud-dim);cursor:pointer}
+.sub{padding-top:8px;border-top:1px dashed var(--hud-line)}
+@media (hover:hover) and (pointer:fine){
+  .wrap .primary:hover{box-shadow:0 0 0 1px var(--hud),0 0 38px rgba(95,208,255,.55)}
+  .wrap .ghost:hover{background:rgba(95,208,255,.1);border-color:var(--hud)}
+  .wrap .towlinks a:hover{border-color:var(--hud);box-shadow:0 0 18px rgba(95,208,255,.25)}
+}
+@media (max-width:600px){.wrap>.panel{padding:22px 16px 20px}}
 </style>
 </head>
 <body>
@@ -245,8 +288,9 @@ input[type=file]::file-selector-button{font:600 .9rem var(--body);color:var(--fg
   <h1 class="sr-only">АвтоРешение</h1>
 
   <section class="panel grid tow" id="tow">
+    <div class="idx">// 01 · на дороге</div>
     <div class="towhead">
-      <div><h2 style="margin:0">Помощь рядом</h2>
+      <div><h2>Помощь <i>рядом</i></h2>
         <p class="hint" style="margin:4px 0 0">Эвакуаторы и автосервисы рядом с вами на картах, с телефонами, часами работы и отзывами.</p></div>
       <a class="sos" href="tel:112">Авария? 112</a>
     </div>
@@ -258,6 +302,8 @@ input[type=file]::file-selector-button{font:600 .9rem var(--body);color:var(--fg
     <div class="grid" id="towlinks"></div>
   </section>
   <form class="panel grid" id="form" autocomplete="off">
+    <div class="idx">// 02 · ваша машина</div>
+    <h2>Ваше <i>авто</i></h2>
     <div id="garage"><label>Мой гараж</label>
       <div class="chips" id="cars"></div>
       <span class="hint" id="nocars">Сохраните машину, чтобы не вводить её каждый раз.</span></div>
@@ -281,7 +327,9 @@ input[type=file]::file-selector-button{font:600 .9rem var(--body);color:var(--fg
       <div><label for="year">Год</label><input id="year" inputmode="numeric" pattern="[0-9]*" enterkeyhint="next" maxlength="4" placeholder="2012"></div>
     </div>
     <div><button type="button" class="ghost small" id="savecar">+ Сохранить машину в гараж</button></div>
-    <div><label for="problem">Что случилось</label>
+    <div class="idx sub">// 03 · симптомы</div>
+    <h2>Что <i>случилось</i></h2>
+    <div><label for="problem">Опишите проблему</label>
       <textarea id="problem" placeholder="Например: не заводится на холодную, стучит при запуске, горит check engine"></textarea></div>
     <div class="row2">
       <div><label for="sound">Какой звук</label>
