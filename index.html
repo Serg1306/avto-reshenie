@@ -1,5 +1,5 @@
 <!doctype html>
-<html lang="ru">
+<html data-side="b" lang="ru">
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover, interactive-widget=resizes-content">
@@ -253,6 +253,36 @@ input[type=file]::file-selector-button{font:600 .9rem var(--body);color:var(--fg
   .wrap .towlinks a:hover{border-color:var(--hud);box-shadow:0 0 18px rgba(95,208,255,.25)}
 }
 @media (max-width:600px){.wrap>.panel{padding:22px 16px 20px}}
+
+/* ===== Боковое оформление на широких экранах ===== */
+.side{display:none}
+@media (min-width:1200px){
+ .side{display:flex;flex-direction:column;align-items:center;justify-content:center;gap:28px;position:fixed;top:0;bottom:0;z-index:0;pointer-events:none;
+   width:calc((100vw - 920px)/2 - 40px);max-width:260px;color:var(--hud);opacity:0;transition:opacity .5s var(--ease-out)}
+ .side-l{left:20px}.side-r{right:20px}
+ body.sides-on .side{opacity:1}
+ .wrap{z-index:1}
+ .side>div{display:none}
+ html[data-side=a] .v-rule,html[data-side=b] .v-blue,html[data-side=c] .v-codes{display:flex}
+ /* A: шкалы */
+ .v-rule{flex-direction:column;align-items:center;gap:10px;height:70vh;font:500 .68rem var(--mono);letter-spacing:.2em}
+ .v-rule i{flex:1;width:34px;background:repeating-linear-gradient(180deg,var(--hud-line) 0 1px,transparent 1px 12px),repeating-linear-gradient(180deg,rgba(95,208,255,.5) 0 1px,transparent 1px 60px); position:relative;border-left:1px solid var(--hud-line)}
+ .v-rule i::after{content:"";position:absolute;left:-5px;top:calc(var(--p,0)*100%);width:44px;height:2px;background:var(--hud);box-shadow:0 0 12px var(--hud)}
+ /* B: чертёж */
+ .v-blue{flex-direction:column;align-items:center;gap:20px}
+ .v-blue .bp{width:min(100%,130px);height:auto;filter:drop-shadow(0 0 8px rgba(95,208,255,.35));opacity:.85}
+ .side-r .v-blue .bp{width:min(100%,150px)}
+ .needle{transform-origin:70px 70px;transform:rotate(calc(-120deg + var(--p,0)*240deg))}
+ .callouts{list-style:none;margin:0;padding:0;display:grid;gap:8px;font:500 .66rem var(--mono);letter-spacing:.16em;text-transform:uppercase;color:var(--hud-dim)}
+ .callouts em{font-style:normal;color:var(--hud);margin-right:8px}
+ /* C: бегущие коды */
+ .v-codes{height:100vh;overflow:hidden;-webkit-mask:linear-gradient(180deg,transparent,#000 20%,#000 80%,transparent);mask:linear-gradient(180deg,transparent,#000 20%,#000 80%,transparent)}
+ .codes-run{list-style:none;margin:0;padding:0;display:grid;gap:22px;font:500 .68rem/1.4 var(--mono);letter-spacing:.08em;color:var(--hud-dim);animation:runup 40s linear infinite}
+ .side-r .codes-run{animation-duration:52s}
+ .codes-run b{display:block;color:var(--hud);font-size:.9rem;letter-spacing:.14em;text-shadow:0 0 10px rgba(95,208,255,.5)}
+ @keyframes runup{to{transform:translateY(-50%)}}
+}
+@media (prefers-reduced-motion:reduce){.codes-run{animation:none}}
 </style>
 </head>
 <body>
@@ -284,6 +314,22 @@ input[type=file]::file-selector-button{font:600 .9rem var(--body);color:var(--fg
     <div class="bar"></div>
   </div>
 </section>
+<div class="side side-l" aria-hidden="true">
+  <div class="v-rule"><span>VIN</span><i></i><span>OBD</span><i></i><span>112</span></div>
+  <div class="v-blue"><svg class="bp" viewBox="0 0 120 260" fill="none" stroke="currentColor" stroke-width="1.2">
+<rect x="18" y="12" width="84" height="236" rx="34"/><path d="M30 78 Q60 62 90 78 L86 112 Q60 104 34 112Z"/><path d="M34 168 Q60 176 86 168 L90 196 Q60 208 30 196Z"/>
+<rect x="34" y="114" width="52" height="52" rx="6" stroke-dasharray="3 3"/><rect x="6" y="46" width="12" height="34" rx="3"/><rect x="102" y="46" width="12" height="34" rx="3"/><rect x="6" y="182" width="12" height="34" rx="3"/><rect x="102" y="182" width="12" height="34" rx="3"/>
+<rect x="38" y="22" width="44" height="34" rx="4" stroke-dasharray="2 3"/><circle cx="60" cy="140" r="3"/></svg><ol class="callouts"><li><em>01</em>двигатель</li><li><em>02</em>тормоза</li><li><em>03</em>подвеска</li><li><em>04</em>аккумулятор</li></ol></div>
+  <div class="v-codes"><ul class="codes-run"><li><b>P0300</b>пропуски зажигания</li><li><b>P0171</b>бедная смесь</li><li><b>P0420</b>катализатор</li><li><b>P0128</b>термостат</li><li><b>P0101</b>датчик воздуха</li><li><b>P0340</b>распредвал</li><li><b>P0505</b>холостой ход</li><li><b>P0700</b>коробка передач</li><li><b>C0035</b>датчик ABS</li><li><b>P0016</b>фазы ГРМ</li><li><b>B1000</b>блок кузова</li><li><b>P0562</b>низкое напряжение</li><li><b>P0300</b>пропуски зажигания</li><li><b>P0171</b>бедная смесь</li><li><b>P0420</b>катализатор</li><li><b>P0128</b>термостат</li><li><b>P0101</b>датчик воздуха</li><li><b>P0340</b>распредвал</li><li><b>P0505</b>холостой ход</li><li><b>P0700</b>коробка передач</li><li><b>C0035</b>датчик ABS</li><li><b>P0016</b>фазы ГРМ</li><li><b>B1000</b>блок кузова</li><li><b>P0562</b>низкое напряжение</li></ul></div>
+</div>
+<div class="side side-r" aria-hidden="true">
+  <div class="v-rule"><span>00°</span><i></i><span>ДИАГ</span><i></i><span>OK</span></div>
+  <div class="v-blue"><svg class="bp" viewBox="0 0 140 140" fill="none" stroke="currentColor" stroke-width="1.2">
+<circle cx="70" cy="70" r="62"/><circle cx="70" cy="70" r="46" stroke-dasharray="2 4"/><circle cx="70" cy="70" r="14"/>
+<g stroke-width="2"><line x1="70" y1="10" x2="70" y2="18" transform="rotate(-120 70 70)"/><line x1="70" y1="10" x2="70" y2="18" transform="rotate(-90 70 70)"/><line x1="70" y1="10" x2="70" y2="18" transform="rotate(-60 70 70)"/><line x1="70" y1="10" x2="70" y2="18" transform="rotate(-30 70 70)"/><line x1="70" y1="10" x2="70" y2="18" transform="rotate(0 70 70)"/><line x1="70" y1="10" x2="70" y2="18" transform="rotate(30 70 70)"/><line x1="70" y1="10" x2="70" y2="18" transform="rotate(60 70 70)"/><line x1="70" y1="10" x2="70" y2="18" transform="rotate(90 70 70)"/><line x1="70" y1="10" x2="70" y2="18" transform="rotate(120 70 70)"/></g>
+<line class="needle" x1="70" y1="70" x2="70" y2="20" stroke-width="2"/></svg><ol class="callouts"><li><em>RPM</em>обороты</li><li><em>°C</em>температура</li><li><em>V</em>напряжение</li></ol></div>
+  <div class="v-codes"><ul class="codes-run"><li><b>P0505</b>холостой ход</li><li><b>P0700</b>коробка передач</li><li><b>C0035</b>датчик ABS</li><li><b>P0016</b>фазы ГРМ</li><li><b>B1000</b>блок кузова</li><li><b>P0562</b>низкое напряжение</li><li><b>P0300</b>пропуски зажигания</li><li><b>P0171</b>бедная смесь</li><li><b>P0420</b>катализатор</li><li><b>P0128</b>термостат</li><li><b>P0101</b>датчик воздуха</li><li><b>P0340</b>распредвал</li><li><b>P0505</b>холостой ход</li><li><b>P0700</b>коробка передач</li><li><b>C0035</b>датчик ABS</li><li><b>P0016</b>фазы ГРМ</li><li><b>B1000</b>блок кузова</li><li><b>P0562</b>низкое напряжение</li><li><b>P0300</b>пропуски зажигания</li><li><b>P0171</b>бедная смесь</li><li><b>P0420</b>катализатор</li><li><b>P0128</b>термостат</li><li><b>P0101</b>датчик воздуха</li><li><b>P0340</b>распредвал</li></ul></div>
+</div>
 <div class="wrap">
   <h1 class="sr-only">АвтоРешение</h1>
 
@@ -1339,6 +1385,12 @@ async function start(){
     composer.render();
   })();
 }
+</script>
+<script>
+(()=>{const w=document.querySelector(".wrap");if(!w)return;
+ const io=new IntersectionObserver(es=>es.forEach(e=>document.body.classList.toggle("sides-on",e.isIntersecting)),{rootMargin:"-30% 0px -30% 0px"});io.observe(w);
+ let raf=0;addEventListener("scroll",()=>{if(raf)return;raf=requestAnimationFrame(()=>{raf=0;const r=w.getBoundingClientRect();const p=Math.min(1,Math.max(0,-r.top/Math.max(1,r.height-innerHeight)));document.documentElement.style.setProperty("--p",p.toFixed(3))})},{passive:true});
+})();
 </script>
 </body>
 </html>
