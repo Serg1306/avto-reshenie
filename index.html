@@ -85,6 +85,15 @@ button:active:not(:disabled),.sos:active,.towlinks a:active{transform:scale(.97)
 button:disabled{opacity:.55;cursor:not-allowed}
 .actions{display:flex;gap:10px;flex-wrap:wrap;align-items:center}
 .hint{font-size:.86rem;color:var(--muted)}
+.obdad{margin-top:-4px}.obdad a{color:var(--accent)}
+.osagorow{display:flex;gap:10px;flex-wrap:wrap;align-items:flex-end}
+.osagorow>div{flex:0 1 190px}
+#osagoalerts:empty{display:none}
+.osagoal{border:1px solid rgba(255,190,90,.55);background:rgba(255,170,60,.1);border-radius:12px;padding:10px 12px;margin-top:8px;display:grid;gap:8px}
+.osagoal.late{border-color:var(--warn);background:rgba(255,107,107,.1)}
+.osagoal .actions a{text-decoration:none;display:inline-block}
+.chip .od{font-family:var(--mono);font-size:.78rem;color:var(--muted);margin-left:6px}
+.chip .od.soon{color:#ffbe5a}.chip .od.late{color:var(--warn)}
 .status{font-size:.9rem;color:var(--muted)}
 .status.err{color:var(--warn)}
 .chips{display:flex;flex-wrap:wrap;gap:8px}
@@ -381,7 +390,8 @@ input[type=file]::file-selector-button{font:600 .9rem var(--body);color:var(--fg
     <h2>Ваше <i>авто</i></h2>
     <div id="garage"><label>Мой гараж</label>
       <div class="chips" id="cars"></div>
-      <span class="hint" id="nocars">Сохраните машину, чтобы не вводить её каждый раз.</span></div>
+      <span class="hint" id="nocars">Сохраните машину, чтобы не вводить её каждый раз.</span>
+      <div id="osagoalerts"></div></div>
     <div class="vinrow">
       <div><label for="vin">VIN-код или номер кузова</label>
         <input id="vin" maxlength="20" autocapitalize="characters" autocorrect="off" autocomplete="off" spellcheck="false" enterkeyhint="search" placeholder="JTDBR32E720123456 или NZE121-0123456"></div>
@@ -401,7 +411,11 @@ input[type=file]::file-selector-button{font:600 .9rem var(--body);color:var(--fg
       <div><label for="model">Модель</label><input id="model" placeholder="Camry"></div>
       <div><label for="year">Год</label><input id="year" inputmode="numeric" pattern="[0-9]*" enterkeyhint="next" maxlength="4" placeholder="2012"></div>
     </div>
-    <div><button type="button" class="ghost small" id="savecar">+ Сохранить машину в гараж</button></div>
+    <div class="osagorow">
+      <div><label for="osago">ОСАГО до…</label><input id="osago" type="date"></div>
+      <button type="button" class="ghost small" id="savecar">+ Сохранить машину в гараж</button>
+    </div>
+    <span class="hint">Укажите дату окончания полиса: за 2 недели напомним и подскажем, где сравнить цены.</span>
     <div class="idx sub">// 03 · симптомы</div>
     <h2>Что <i>случилось</i></h2>
     <div><label for="problem">Опишите проблему</label>
@@ -417,6 +431,9 @@ input[type=file]::file-selector-button{font:600 .9rem var(--body);color:var(--fg
       <div><label for="city">Город (для цен)</label><input id="city" placeholder="Москва"></div>
     </div>
     <div class="codeinfo" id="codeinfo" hidden></div>
+    <div class="hint obdad">🔌 Нет сканера, чтобы считать коды? Адаптер ELM327 стоит 500–1 500 ₽ и работает с телефоном:
+      <a id="obd-ozon" href="#" target="_blank" rel="noopener sponsored">Ozon</a> ·
+      <a id="obd-wb" href="#" target="_blank" rel="noopener sponsored">Wildberries</a></div>
     <div data-ai><label for="photos">Фото проблемы, до 3 (потёк, лампа на панели, деталь)</label>
       <input type="file" id="photos" accept="image/*" multiple>
       <div class="thumbs" id="photoprev"></div></div>
@@ -638,16 +655,58 @@ function bindPhotos(inputId, prevId){
 bindPhotos("photos", "photoprev"); bindPhotos("estphotos", "estprev");
 const toImages = list => list.map(u => ({media_type: "image/jpeg", data: u.split(",")[1]}));
 
+// Адаптер ELM327: ссылки на поиск. Когда будут партнёрские ссылки Ozon и Wildberries, заменить здесь.
+const OBD_LINKS = {
+  "obd-ozon": "https://www.ozon.ru/search/?text=elm327+bluetooth",
+  "obd-wb": "https://www.wildberries.ru/catalog/0/search.aspx?search=elm327%20bluetooth"
+};
+Object.entries(OBD_LINKS).forEach(([id, url]) => { $(id).href = url; });
+
+// ОСАГО: ссылка для сравнения цен. Когда будет партнёрская ссылка (Сравни, Т-Банк и др.), заменить здесь.
+const OSAGO_URL = "https://www.sravni.ru/osago/";
+const OSAGO_SOON_DAYS = 14;
+const carName = c => [c.make, c.model, c.year].filter(Boolean).join(" ");
+function osagoDays(d){ if (!d) return null; const t = new Date(d + "T00:00:00"); if (isNaN(t)) return null;
+  const n = new Date(); n.setHours(0,0,0,0); return Math.round((t - n) / 864e5); }
+const ruDate = d => d ? d.split("-").reverse().join(".") : "";
+const dayWord = n => { const a = Math.abs(n) % 100, b = a % 10; return (a > 10 && a < 20) ? "дней" : b === 1 ? "день" : (b >= 2 && b <= 4) ? "дня" : "дней"; };
+function renderOsagoAlerts(){
+  const cars = getJSON("cars", []);
+  $("osagoalerts").innerHTML = cars.map((c, i) => ({c, i, d: osagoDays(c.osago)}))
+    .filter(x => x.d !== null && x.d <= OSAGO_SOON_DAYS)
+    .map(({c, i, d}) => `<div class="osagoal${d < 0 ? " late" : ""}">
+      <div>${d < 0 ? `⚠️ У <b>${esc(carName(c))}</b> ОСАГО закончилось ${esc(ruDate(c.osago))}. Ездить без полиса нельзя, штраф 800 ₽.`
+        : `🛡 У <b>${esc(carName(c))}</b> ОСАГО заканчивается ${esc(ruDate(c.osago))}, ${d === 0 ? "сегодня" : `через ${d} ${dayWord(d)}`}.`}</div>
+      <div class="actions"><a class="primary small" href="${OSAGO_URL}" target="_blank" rel="noopener sponsored">Сравните цены ОСАГО</a>
+        <button type="button" class="ghost small" data-osagonew="${i}">Я продлил полис</button></div></div>`).join("");
+}
+$("osagoalerts").addEventListener("click", e => {
+  const b = e.target.closest("[data-osagonew]"); if (!b) return;
+  const cars = getJSON("cars", []), c = cars[+b.dataset.osagonew]; if (!c) return;
+  const t = new Date((c.osago || new Date().toISOString().slice(0,10)) + "T00:00:00"); t.setFullYear(t.getFullYear() + 1);
+  c.osago = t.toISOString().slice(0,10); setJSON("cars", cars); renderGarage();
+  if (carKey() === [c.make,c.model,c.year].map(s=>(s||"").toLowerCase()).join("|")) $("osago").value = c.osago;
+  setStatus(`Записал: новый полис до ${ruDate(c.osago)}. Если дата другая, поправьте в поле «ОСАГО до…».`);
+});
+// Если машина уже в гараже, дата ОСАГО сохраняется сразу
+$("osago").addEventListener("change", () => {
+  const cars = getJSON("cars", []), cur = carKey();
+  const c = cars.find(x => [x.make,x.model,x.year].map(s=>(s||"").toLowerCase()).join("|") === cur);
+  if (c) { c.osago = $("osago").value; setJSON("cars", cars); renderGarage(); setStatus(c.osago ? `Дата ОСАГО сохранена: ${ruDate(c.osago)}.` : "Дата ОСАГО убрана."); }
+});
+
 // Мой гараж: сохранённые машины (только в этом браузере)
 const carKey = () => [$("make").value, $("model").value, $("year").value].map(s => s.trim().toLowerCase()).join("|");
 function renderGarage(){
   const cars = getJSON("cars", []), cur = carKey();
   $("nocars").hidden = cars.length > 0;
-  $("cars").innerHTML = cars.map((c,i) => `<span class="chip btn${[c.make,c.model,c.year].map(s=>(s||"").toLowerCase()).join("|") === cur ? " sel" : ""}" role="button" tabindex="0" data-car="${i}">${esc([c.make,c.model,c.year].filter(Boolean).join(" "))}<button type="button" class="x" data-del="${i}" aria-label="Удалить">×</button></span>`).join("");
-  renderSaved();
+  $("cars").innerHTML = cars.map((c,i) => `<span class="chip btn${[c.make,c.model,c.year].map(s=>(s||"").toLowerCase()).join("|") === cur ? " sel" : ""}" role="button" tabindex="0" data-car="${i}">${esc(carName(c))}${osagoBadge(c)}<button type="button" class="x" data-del="${i}" aria-label="Удалить">×</button></span>`).join("");
+  renderOsagoAlerts(); renderSaved();
 }
+function osagoBadge(c){ const d = osagoDays(c.osago); if (d === null) return "";
+  return `<span class="od${d < 0 ? " late" : d <= OSAGO_SOON_DAYS ? " soon" : ""}" title="ОСАГО до ${esc(ruDate(c.osago))}">ОСАГО ${esc(ruDate(c.osago).slice(0,5))}</span>`; }
 $("savecar").addEventListener("click", () => {
-  const c = {make: $("make").value.trim(), model: $("model").value.trim(), year: $("year").value.trim()};
+  const c = {make: $("make").value.trim(), model: $("model").value.trim(), year: $("year").value.trim(), osago: $("osago").value};
   if (!c.make || !c.model) { setStatus("Укажите хотя бы марку и модель.", true); return; }
   const cars = getJSON("cars", []).filter(x => [x.make,x.model,x.year].join("|").toLowerCase() !== [c.make,c.model,c.year].join("|").toLowerCase());
   setJSON("cars", [c, ...cars].slice(0, 10)); renderGarage(); setStatus("Машина сохранена в гараж.");
@@ -656,7 +715,7 @@ $("cars").addEventListener("click", e => {
   const del = e.target.closest("[data-del]");
   if (del) { const cars = getJSON("cars", []); cars.splice(+del.dataset.del, 1); setJSON("cars", cars); renderGarage(); return; }
   const b = e.target.closest("[data-car]"); if (!b) return;
-  const c = getJSON("cars", [])[+b.dataset.car]; $("make").value = c.make; $("model").value = c.model; $("year").value = c.year || "";
+  const c = getJSON("cars", [])[+b.dataset.car]; $("make").value = c.make; $("model").value = c.model; $("year").value = c.year || ""; $("osago").value = c.osago || "";
   renderGarage();
 });
 // При вводе машины только подсвечиваем совпадающую в гараже, не перерисовывая кнопки
