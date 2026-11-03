@@ -496,7 +496,9 @@ $("decode").addEventListener("click", async () => {
   if (make) {
     $("make").value = make; $("model").value = model; $("year").value = year;
     const extra = [d.DisplacementL && d.DisplacementL + " л", d.EngineModel, d.FuelTypePrimary, d.TransmissionStyle].filter(Boolean).join(" · ");
-    $("carinfo").textContent = `✓ ${make} ${model} ${year}${extra ? " — " + extra : ""}` + (!d.Make ? ". Проверьте модель и год: для этой марки VIN расшифрован приблизительно." : "") + (!model ? " Модель впишите сами." : "");
+    const missing = [!model && "модель", !year && "год"].filter(Boolean).join(" и ");
+    $("carinfo").textContent = `✓ ${[make, model, year].filter(Boolean).join(" ")}${extra ? " — " + extra : ""}.`
+      + (missing ? ` ${missing[0].toUpperCase() + missing.slice(1)} по этому VIN не определить, впишите сами. Если VIN вводили с фото, сверьте его с документом.` : !d.Make ? " Проверьте модель и год: для этой марки VIN расшифрован приблизительно." : "");
     $("carinfo").hidden = false; setStatus(""); markGarage();
     if (!model) $("model").focus();
   } else {
@@ -694,13 +696,20 @@ function vinCandidates(text){
   const found = new Map();
   const add = (v, bonus) => {
     if (!/^[A-HJ-NPR-Z0-9]{17}$/.test(v) || !/[A-Z]/.test(v) || !/\d{4}$/.test(v)) return;
-    let score = bonus + (WMI[v.slice(0,3)] ? 3 : WMI2[v.slice(0,2)] ? 2 : 0) + (vinCheckOk(v) ? 3 : 0) + (/ZZZ/.test(v) ? 1 : 0);
+    let score = bonus + (WMI[v.slice(0,3)] ? 3 : WMI2[v.slice(0,2)] ? 2 : 0) + (vinCheckOk(v) ? 3 : 0) + (/^...ZZZ/.test(v) ? 2 : 0);
     found.set(v, Math.max(found.get(v) || 0, score));
   };
   const lines = text.split(/\n/).map(l => fix(l).replace(/[^A-Z0-9]/g, ""));
-  for (const l of lines) for (let i = 0; i + 17 <= l.length; i++) add(l.slice(i, i + 17), l.length === 17 ? 2 : 0);
+  // У европейских VIN после кода завода стоит «ZZZ», а распознавание часто читает Z как 2 и добавляет лишний символ
+  const zzz = l => l.replace(/(WVW|WVG|WV1|WV2|WAU|WUA|TRU|TMB|VSS|XW8|WVV)[Z27]{2,4}(?=[A-Z0-9]{11})/g, "$1ZZZ");
+  // Номер, прочитанный как есть, чуть надёжнее исправленного
+  for (const l0 of lines) for (const l of new Set([l0, zzz(l0)]))
+    for (let i = 0; i + 17 <= l.length; i++) add(l.slice(i, i + 17), (l.length === 17 ? 2 : 0) + (l === l0 ? 1 : 0));
   // Отбрасываем случайные сочетания: нужна известная марка, верная контрольная цифра или отдельная строка из 17 символов
-  return [...found].filter(([, sc]) => sc >= 2).sort((a, b) => b[1] - a[1]).map(([v]) => v).slice(0, 4);
+  const best = [...found].filter(([, sc]) => sc >= 2).sort((a, b) => b[1] - a[1]);
+  // Явный лидер по уверенности — берём только его, иначе даём выбрать
+  if (best.length > 1 && best[0][1] > best[1][1]) return [best[0][0]];
+  return best.map(([v]) => v).slice(0, 4);
 }
 function frameCandidates(text){
   const out = [];
