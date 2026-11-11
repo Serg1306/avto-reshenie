@@ -393,6 +393,14 @@ input[type=file]::file-selector-button{font:600 .9rem var(--body);color:var(--fg
       <span class="hint" id="nocars">Сохраните машину, чтобы не вводить её каждый раз.</span>
       <div id="osagoalerts"></div></div>
     <div class="vinrow">
+      <div><label for="plate">Госномер</label>
+        <input id="plate" maxlength="12" autocapitalize="characters" autocorrect="off" autocomplete="off" spellcheck="false" enterkeyhint="search" placeholder="А123ВС77"></div>
+      <button type="button" class="ghost" id="platego">Найти машину</button>
+    </div>
+    <span class="hint">Узнаем марку, модель, год, VIN, ДТП, розыск и запреты. Данные владельца (ФИО, телефон) не показываем: их закон защищает (152-ФЗ).</span>
+    <div class="status" id="platestatus"></div>
+    <div class="car" id="plateinfo" hidden></div>
+    <div class="vinrow">
       <div><label for="vin">VIN-код или номер кузова</label>
         <input id="vin" maxlength="20" autocapitalize="characters" autocorrect="off" autocomplete="off" spellcheck="false" enterkeyhint="search" placeholder="JTDBR32E720123456 или NZE121-0123456"></div>
       <button type="button" class="ghost" id="decode">Расшифровать</button>
@@ -806,6 +814,61 @@ $("decode").addEventListener("click", async () => {
   }
   $("decode").disabled = false;
 });
+// Машина по госномеру: запрос идёт через наш сервер (ключ сервиса проверки хранится там, не в браузере)
+const PLATE_LAT = {A:"А",B:"В",E:"Е",K:"К",M:"М",H:"Н",O:"О",P:"Р",C:"С",T:"Т",Y:"У",X:"Х"};
+function normPlate(v){
+  return v.toUpperCase().replace(/[\s\-_.|]/g, "").replace(/RUS$/, "").replace(/[ABEKMHOPCTYX]/g, c => PLATE_LAT[c]).replace(/Ё/g, "Е");
+}
+function plateStatus(t, err){ $("platestatus").textContent = t; $("platestatus").className = "status" + (err ? " err" : ""); }
+function plateFallback(plate){
+  // Сервер не подключён: даём ссылки на сайты, где можно проверить номер самостоятельно
+  $("plateinfo").innerHTML = `Пока проверьте номер на этих сайтах: `
+    + `<a href="https://avtocod.ru/" target="_blank" rel="noopener">Автокод</a> · `
+    + `<a href="https://www.nomerogram.ru/" target="_blank" rel="noopener">Номерограм</a> · `
+    + `<a href="https://xn--90adear.xn--p1ai/check/auto" target="_blank" rel="noopener">Госавтоинспекция (по VIN)</a>.`
+    + ` Номер: <b>${esc(plate)}</b>.`;
+  $("plateinfo").hidden = false;
+}
+async function findByPlate(){
+  const plate = normPlate($("plate").value);
+  $("plateinfo").hidden = true;
+  if (!/^[АВЕКМНОРСТУХ]\d{3}[АВЕКМНОРСТУХ]{2}\d{2,3}$/.test(plate)) {
+    plateStatus("Введите номер как на табличке: буква, три цифры, две буквы и регион, например А123ВС77.", true); return;
+  }
+  $("plate").value = plate;
+  const base = $("aiurl").value.trim();
+  if (!base) { plateStatus("Поиск по госномеру скоро заработает.", false); plateFallback(plate); return; }
+  $("platego").disabled = true; plateStatus("Ищу машину по номеру… Это может занять до минуты.");
+  try {
+    const r = await fetch(new URL("/plate", base).toString(), {method: "POST", headers: {"Content-Type": "application/json", "X-Device-Id": deviceId()}, body: JSON.stringify({plate})});
+    const d = await r.json().catch(() => ({error: "сервер вернул непонятный ответ"}));
+    if (d.notConfigured) { plateStatus("Поиск по госномеру скоро заработает.", false); plateFallback(plate); return; }
+    if (!r.ok || d.error) throw new Error(d.error || ("код " + r.status));
+    if (!d.found) { plateStatus("По этому номеру машина не найдена. Проверьте номер или введите VIN.", true); return; }
+    const make = cap(d.make || ""), model = d.model || "", year = d.year || "";
+    if (make) { $("make").value = make; $("model").value = model; $("year").value = year; }
+    if (d.vin) $("vin").value = d.vin; else if (d.body) $("vin").value = d.body;
+    const li = [];
+    li.push(`<b>✓ ${esc([make, model, year].filter(Boolean).join(" ") || "Машина найдена")}</b>`);
+    if (d.vin) li.push(`VIN: <span style="font-family:var(--mono)">${esc(d.vin)}</span>`);
+    if (d.dtp === null) li.push("ДТП: не удалось проверить");
+    else if (!d.dtp.length) li.push("ДТП: не найдено");
+    else li.push(`ДТП: ${d.dtp.length} — ` + d.dtp.map(x => esc([x.date, x.type, x.damage].filter(Boolean).join(", "))).join("; "));
+    if (d.wanted !== null && d.wanted !== undefined) li.push(d.wanted ? "<b style=\"color:var(--warn)\">⚠ Машина в розыске</b>" : "Розыск: нет");
+    if (d.restrictions === null) li.push("Ограничения: не удалось проверить");
+    else if (!d.restrictions.length) li.push("Ограничения на регистрацию: нет");
+    else li.push(`<span style="color:var(--warn)">Ограничения: ${d.restrictions.length}</span> — ` + d.restrictions.map(x => esc([x.type, x.date && "с " + x.date, x.who].filter(Boolean).join(", "))).join("; "));
+    li.push(`<span class="hint">Данные ГИБДД и РСА. Если машину недавно продали, сведения могут относиться к прошлой машине с этим номером, сверьте VIN с документами.</span>`);
+    $("plateinfo").innerHTML = li.join("<br>"); $("plateinfo").hidden = false;
+    plateStatus(""); if (make) markGarage();
+  } catch(e) {
+    plateStatus(e.message, true);
+  } finally {
+    $("platego").disabled = false;
+  }
+}
+$("platego").addEventListener("click", findByPlate);
+$("plate").addEventListener("keydown", e => { if (e.key === "Enter") { e.preventDefault(); findByPlate(); } });
 // Номер кузова (Frame No.) у японских машин без VIN: модельный код до дефиса и заводской номер.
 // По модельному коду определяем марку, модель и годы выпуска поколения.
 const FRAMES = [
