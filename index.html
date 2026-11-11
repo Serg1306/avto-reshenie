@@ -394,7 +394,7 @@ input[type=file]::file-selector-button{font:600 .9rem var(--body);color:var(--fg
       <div id="osagoalerts"></div></div>
     <div class="vinrow">
       <div><label for="plate">Госномер</label>
-        <input id="plate" maxlength="12" autocapitalize="characters" autocorrect="off" autocomplete="off" spellcheck="false" enterkeyhint="search" placeholder="А123ВС77"></div>
+        <input id="plate" maxlength="12" autocapitalize="characters" autocorrect="off" autocomplete="off" spellcheck="false" enterkeyhint="search" placeholder="Например: А123ВС77"></div>
       <button type="button" class="ghost" id="platego">Найти машину</button>
     </div>
     <span class="hint">Узнаем марку, модель, год, VIN, ДТП, розыск и запреты. Данные владельца (ФИО, телефон) не показываем: их закон защищает (152-ФЗ).</span>
@@ -791,6 +791,10 @@ function buildQueries(){
 
 $("decode").addEventListener("click", async () => {
   const vin = $("vin").value.trim().toUpperCase().replace(/\s+/g, "");
+  // Ввели госномер в поле VIN — переносим его в поле «Госномер» и ищем по номеру
+  if (/^[АВЕКМНОРСТУХABEKMHOPCTYX]\d{3}[АВЕКМНОРСТУХABEKMHOPCTYX]{2}\d{2,3}(RUS)?$/.test(vin)) {
+    $("plate").value = vin; $("vin").value = ""; setStatus(""); findByPlate(); $("plate").scrollIntoView({block: "center", behavior: "smooth"}); return;
+  }
   if (!/^[A-HJ-NPR-Z0-9]{17}$/.test(vin)) {
     if (/^[A-Z0-9]{11,19}$/.test(vin) && vin.length !== 17 && !(findFrame(vin) || {found: []}).found.length) {
       $("carinfo").hidden = true;
@@ -838,6 +842,8 @@ function plateFallback(plate){
   $("plateinfo").hidden = false;
 }
 async function findByPlate(){
+  if (!$("plate").value.trim() && normPlate($("vin").value).match(/^[АВЕКМНОРСТУХ]\d{3}[АВЕКМНОРСТУХ]{2}\d{2,3}$/)) { $("plate").value = $("vin").value; $("vin").value = ""; }
+  if (!$("plate").value.trim()) { plateStatus("Впишите госномер в поле выше, например А123ВС77, и нажмите «Найти машину».", true); $("plate").focus(); return; }
   const plate = normPlate($("plate").value);
   $("plateinfo").hidden = true;
   if (!/^[АВЕКМНОРСТУХ]\d{3}[АВЕКМНОРСТУХ]{2}\d{2,3}$/.test(plate)) {
