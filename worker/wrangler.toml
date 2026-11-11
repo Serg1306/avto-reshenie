@@ -16,6 +16,10 @@ APP_URL = "https://serg1306.github.io/avto-reshenie/"
 # Т-Банк: ключ терминала из личного кабинета; пароль терминала — секретом TBANK_PASSWORD
 TBANK_TERMINAL_KEY = ""
 TBANK_TAXATION = "usn_income"
+# Поиск по госномеру (api-cloud.ru, ~4 ₽ за проверку). Ключ — секретом API_CLOUD_TOKEN
+PLATE_PER_DEVICE = "5"
+PLATE_PER_IP = "10"
+PLATE_TOTAL = "200"
 
 [[durable_objects.bindings]]
 name = "LIMITER"

@@ -109,6 +109,18 @@ export class Limiter extends DurableObject {
     for (const l of plan.limits) this.bump(l.lifetime ? LIFETIME : day, l.key, -1);
   }
 
+  // Простые дневные лимиты без подписки (например, проверка по госномеру): все или ничего
+  takeDaily(day: string, limits: Limit[]): Limit | null {
+    for (const l of limits) if (this.count(day, l.key) >= l.max) return l;
+    for (const l of limits) this.bump(day, l.key, 1);
+    this.ctx.storage.sql.exec("DELETE FROM counts WHERE day < ?", day);
+    return null;
+  }
+
+  refundDaily(day: string, limits: Limit[]): void {
+    for (const l of limits) this.bump(day, l.key, -1);
+  }
+
   // --- Оплата ---
   createOrder(orderId: string, device: string, email: string): void {
     this.ctx.storage.sql.exec(

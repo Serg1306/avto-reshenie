@@ -7,6 +7,7 @@
 import Anthropic from "@anthropic-ai/sdk";
 import { Limiter, type Plan } from "./limiter";
 import * as tbank from "./tbank";
+import { ApiError, lookupPlate, normalizePlate } from "./plate";
 
 export { Limiter };
 
@@ -26,6 +27,11 @@ export interface Env {
   TBANK_PASSWORD?: string; // секрет: wrangler secret put TBANK_PASSWORD
   TBANK_API?: string; // по умолчанию https://securepay.tinkoff.ru/v2
   TBANK_TAXATION?: string; // система налогообложения для чека: osn, usn_income, usn_income_outcome ...
+  // Поиск по госномеру (api-cloud.ru)
+  API_CLOUD_TOKEN?: string; // секрет: wrangler secret put API_CLOUD_TOKEN
+  PLATE_PER_DEVICE?: string; // проверок в день с одного устройства
+  PLATE_PER_IP?: string; // проверок в день с одного IP
+  PLATE_TOTAL?: string; // проверок в день на весь сервис (потолок расходов)
 }
 
 const num = (v: string | undefined, d: number) => (v && /^\d+$/.test(v) ? parseInt(v, 10) : d);
@@ -262,6 +268,37 @@ export default {
       return ok
         ? json({ ok: true }, 200, headers)
         : json({ error: "Активной подписки на этот email не найдено" }, 404, headers);
+    }
+
+    // Машина по госномеру: марка, модель, год, VIN, ДТП, розыск, ограничения. Без данных владельца.
+    if (path === "/plate") {
+      if (!env.API_CLOUD_TOKEN) return json({ error: "Поиск по госномеру ещё не подключён", notConfigured: true }, 503, headers);
+      const b = await readJson<{ plate?: string }>(request);
+      const plate = normalizePlate(b?.plate);
+      if (!plate) return json({ error: "Введите номер как на табличке, например А123ВС77 или А123ВС777" }, 400, headers);
+      const ip = request.headers.get("CF-Connecting-IP") || "unknown";
+      const limits = [
+        { key: "plate-device:" + deviceOf(request), max: num(env.PLATE_PER_DEVICE, 5) },
+        { key: "plate-ip:" + ip, max: num(env.PLATE_PER_IP, 10) },
+        { key: "plate-total", max: num(env.PLATE_TOTAL, 200) },
+      ];
+      const day = today();
+      const limiter = limiterOf(env);
+      const blocked = await limiter.takeDaily(day, limits);
+      if (blocked) {
+        const msg = blocked.key === "plate-total"
+          ? "Сегодня проверки по госномеру закончились на всём сервисе. Попробуйте завтра."
+          : "На сегодня проверки по госномеру закончились. Попробуйте завтра.";
+        return json({ error: msg, limit: true }, 429, headers);
+      }
+      try {
+        const res = await lookupPlate(plate, env.API_CLOUD_TOKEN);
+        return json(res, 200, headers);
+      } catch (e) {
+        await limiter.refundDaily(day, limits);
+        const status = e instanceof ApiError ? e.status : 502;
+        return json({ error: "Не удалось проверить номер: " + (e instanceof Error ? e.message : "ошибка") }, status, headers);
+      }
     }
 
     if (path !== "/") return json({ error: "Не найдено" }, 404, headers);
