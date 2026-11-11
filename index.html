@@ -815,6 +815,8 @@ $("decode").addEventListener("click", async () => {
   $("decode").disabled = false;
 });
 // Машина по госномеру: запрос идёт через наш сервер (ключ сервиса проверки хранится там, не в браузере)
+// Адрес функции в Яндекс Облаке (см. yandex/README.md). Пусто — берём адрес сервера ИИ + /plate.
+const PLATE_URL = "";
 const PLATE_LAT = {A:"А",B:"В",E:"Е",K:"К",M:"М",H:"Н",O:"О",P:"Р",C:"С",T:"Т",Y:"У",X:"Х"};
 function normPlate(v){
   return v.toUpperCase().replace(/[\s\-_.|]/g, "").replace(/RUS$/, "").replace(/[ABEKMHOPCTYX]/g, c => PLATE_LAT[c]).replace(/Ё/g, "Е");
@@ -837,10 +839,11 @@ async function findByPlate(){
   }
   $("plate").value = plate;
   const base = $("aiurl").value.trim();
-  if (!base) { plateStatus("Поиск по госномеру скоро заработает.", false); plateFallback(plate); return; }
+  const url = PLATE_URL || (base ? new URL("/plate", base).toString() : "");
+  if (!url) { plateStatus("Поиск по госномеру скоро заработает.", false); plateFallback(plate); return; }
   $("platego").disabled = true; plateStatus("Ищу машину по номеру… Это может занять до минуты.");
   try {
-    const r = await fetch(new URL("/plate", base).toString(), {method: "POST", headers: {"Content-Type": "application/json", "X-Device-Id": deviceId()}, body: JSON.stringify({plate})});
+    const r = await fetch(url, {method: "POST", headers: {"Content-Type": "application/json", "X-Device-Id": deviceId()}, body: JSON.stringify({plate})});
     const d = await r.json().catch(() => ({error: "сервер вернул непонятный ответ"}));
     if (d.notConfigured) { plateStatus("Поиск по госномеру скоро заработает.", false); plateFallback(plate); return; }
     if (!r.ok || d.error) throw new Error(d.error || ("код " + r.status));
