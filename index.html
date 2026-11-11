@@ -523,7 +523,7 @@ input[type=file]::file-selector-button{font:600 .9rem var(--body);color:var(--fg
 const $ = id => document.getElementById(id);
 const store = { get(k){try{return localStorage.getItem(k)||""}catch(e){return ""}}, set(k,v){try{localStorage.setItem(k,v)}catch(e){}} };
 $("apikey").value = store.get("yt_key");
-// Адрес сервера сводки: из настроек или по умолчанию (заполняется после развёртывания сервера)
+// Адрес сервера сводки: из настроек или по умолчанию. Сейчас это функция YandexGPT в Яндекс Облаке (yandex/ai)
 const DEFAULT_AI_URL = "";
 // Функции ИИ (сводка, проверка счёта, фото, подписка) временно выключены.
 // Чтобы вернуть, поставьте true.
@@ -552,7 +552,13 @@ async function aiResult(r){
   return d;
 }
 // Подписка: экран оплаты, восстановление по email, статус
-const apiUrl = path => new URL(path, $("aiurl").value.trim()).toString();
+// Сервер ИИ в Яндекс Облаке — одна ссылка функции, адрес передаётся параметром action
+const isYandexFn = u => /functions\.yandexcloud\.net|apigw\.yandexcloud\.net/.test(u);
+const apiUrl = path => {
+  const base = $("aiurl").value.trim();
+  if (isYandexFn(base)) { const u = new URL(base); u.searchParams.set("action", path.replace(/^\//, "")); return u.toString(); }
+  return new URL(path, base).toString();
+};
 async function apiPost(path, body){
   const r = await fetch(apiUrl(path), {method: "POST", headers: {"Content-Type": "application/json", "X-Device-Id": deviceId()}, body: JSON.stringify(body)});
   const d = await r.json().catch(() => ({error: "сервер вернул непонятный ответ"}));
@@ -839,7 +845,7 @@ async function findByPlate(){
   }
   $("plate").value = plate;
   const base = $("aiurl").value.trim();
-  const url = PLATE_URL || (base ? new URL("/plate", base).toString() : "");
+  const url = PLATE_URL || (base && !isYandexFn(base) ? new URL("/plate", base).toString() : "");
   if (!url) { plateStatus("Поиск по госномеру скоро заработает.", false); plateFallback(plate); return; }
   $("platego").disabled = true; plateStatus("Ищу машину по номеру… Это может занять до минуты.");
   try {
