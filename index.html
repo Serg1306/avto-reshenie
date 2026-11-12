@@ -31,8 +31,8 @@
   color-scheme:dark;
 }
 *{box-sizing:border-box}
-html{background:var(--bg);-webkit-tap-highlight-color:transparent;-webkit-text-size-adjust:100%}
-body{margin:0;min-height:100vh;min-height:100dvh;color:var(--fg);font:16px/1.55 var(--body);
+html{overflow-x:clip;background:var(--bg);-webkit-tap-highlight-color:transparent;-webkit-text-size-adjust:100%}
+body{overflow-x:clip;margin:0;min-height:100vh;min-height:100dvh;color:var(--fg);font:16px/1.55 var(--body);
   background:
     radial-gradient(900px 600px at 85% -10%,rgba(45,110,255,.35),transparent 60%),
     radial-gradient(700px 500px at -10% 30%,rgba(30,80,200,.28),transparent 60%),
@@ -62,7 +62,9 @@ input,textarea,select{width:100%;font:inherit;color:var(--fg);background:var(--f
 input::placeholder,textarea::placeholder{color:#6f81a6}
 select option{background:var(--panel-solid);color:var(--fg)}
 input:focus,textarea:focus,select:focus{outline:none;border-color:var(--accent);box-shadow:0 0 0 3px rgba(61,139,255,.25)}
-button:focus-visible,a:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+button:focus-visible,a:focus-visible,summary:focus-visible,[tabindex]:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+/* значки вместо эмодзи (правило Hallmark: эмодзи не используются как иконки) */
+.ic{width:1.1em;height:1.1em;vertical-align:-.2em;margin-right:.4em;flex:none;fill:none;stroke:currentColor;stroke-width:2;stroke-linecap:round;stroke-linejoin:round}
 #vin{font-family:var(--mono);text-transform:uppercase;letter-spacing:.08em}
 textarea{min-height:90px;resize:vertical}
 .grid{display:grid;gap:16px}
@@ -295,7 +297,7 @@ input[type=file]::file-selector-button{font:600 .9rem var(--body);color:var(--fg
 .side{display:none}
 @media (min-width:1200px){
  .side{display:flex;flex-direction:column;align-items:center;justify-content:center;gap:28px;position:fixed;top:0;bottom:0;z-index:0;pointer-events:none;
-   width:calc((100vw - 920px)/2 - 40px);max-width:260px;color:var(--hud);opacity:0;transition:opacity .5s var(--ease-out)}
+   width:calc((100% - 920px)/2 - 40px);max-width:260px;color:var(--hud);opacity:0;transition:opacity .5s var(--ease-out)}
  .side-l{left:20px}.side-r{right:20px}
  body.sides-on .side{opacity:1}
  .wrap{z-index:1}
@@ -457,6 +459,22 @@ input[type=file]::file-selector-button{font:600 .9rem var(--body);color:var(--fg
 </style>
 </head>
 <body>
+<svg width="0" height="0" style="position:absolute" aria-hidden="true"><defs>
+<symbol id="i-pin" viewBox="0 0 24 24"><path d="M12 21s-7-6.2-7-11.5a7 7 0 0 1 14 0C19 14.8 12 21 12 21z"/><circle cx="12" cy="9.5" r="2.5"/></symbol>
+<symbol id="i-camera" viewBox="0 0 24 24"><path d="M4 8h3l2-3h6l2 3h3v11H4z"/><circle cx="12" cy="13" r="3.5"/></symbol>
+<symbol id="i-image" viewBox="0 0 24 24"><rect x="3" y="5" width="18" height="14" rx="2"/><circle cx="9" cy="10" r="1.6"/><path d="M21 16l-5-5-8 8"/></symbol>
+<symbol id="i-fuel" viewBox="0 0 24 24"><path d="M5 21V5a2 2 0 0 1 2-2h6a2 2 0 0 1 2 2v16M3 21h14M5 10h10M15 8l3 3v7a1.5 1.5 0 0 0 3 0V9l-3-3"/></symbol>
+<symbol id="i-plug" viewBox="0 0 24 24"><path d="M9 2v6M15 2v6M6 8h12v3a6 6 0 0 1-12 0zM12 17v5"/></symbol>
+<symbol id="i-truck" viewBox="0 0 24 24"><path d="M2 6h11v10H2zM13 10h4l3 3v3h-7"/><circle cx="6" cy="17.5" r="2"/><circle cx="17" cy="17.5" r="2"/></symbol>
+<symbol id="i-wrench" viewBox="0 0 24 24"><path d="M14.7 6.3a1 1 0 0 0 0 1.4l1.6 1.6a1 1 0 0 0 1.4 0l3.77-3.77a6 6 0 0 1-7.94 7.94l-6.91 6.91a2.12 2.12 0 0 1-3-3l6.91-6.91a6 6 0 0 1 7.94-7.94l-3.76 3.76z"/></symbol>
+<symbol id="i-ruble" viewBox="0 0 24 24"><path d="M8 21V3h5.5a4.5 4.5 0 0 1 0 9H6M6 16h8"/></symbol>
+<symbol id="i-nut" viewBox="0 0 24 24"><path d="M12 2l8.66 5v10L12 22l-8.66-5V7z"/><circle cx="12" cy="12" r="3.5"/></symbol>
+<symbol id="i-map" viewBox="0 0 24 24"><path d="M9 4L3 6v14l6-2 6 2 6-2V4l-6 2-6-2zM9 4v14M15 6v14"/></symbol>
+<symbol id="i-clock" viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/></symbol>
+<symbol id="i-phone" viewBox="0 0 24 24"><rect x="7" y="2" width="10" height="20" rx="2"/><path d="M11 18h2"/></symbol>
+<symbol id="i-shield" viewBox="0 0 24 24"><path d="M12 3l8 3v6c0 5-3.5 8-8 9-4.5-1-8-4-8-9V6z"/></symbol>
+<symbol id="i-alert" viewBox="0 0 24 24"><path d="M12 3L2 20h20zM12 10v4M12 17h.01"/></symbol>
+</defs></svg>
 <div id="progress" aria-hidden="true"></div>
 <section id="hero" aria-label="АвтоРешение">
   <div class="top"><b>Авто<span>Решение</span></b><span>помощь водителю</span></div>
@@ -514,7 +532,7 @@ input[type=file]::file-selector-button{font:600 .9rem var(--body);color:var(--fg
     </div>
     <div class="vinrow">
       <div><label for="towcity">Где вы</label><input id="towcity" placeholder="Город или адрес, например: Казань"></div>
-      <button type="button" class="primary" id="towgeo">📍 Найти рядом со мной</button>
+      <button type="button" class="primary" id="towgeo"><svg class="ic" aria-hidden="true"><use href="#i-pin"/></svg>Найти рядом со мной</button>
     </div>
     <div class="status" id="towstatus"></div>
     <div class="grid" id="towlinks"></div>
@@ -540,8 +558,8 @@ input[type=file]::file-selector-button{font:600 .9rem var(--body);color:var(--fg
       <button type="button" class="ghost" id="decode">Расшифровать</button>
     </div>
     <div class="actions">
-      <button type="button" class="ghost small" id="vinphotobtn" onclick="document.getElementById('vincam').click()">📷 Сфотографировать СТС или ПТС</button>
-      <button type="button" class="ghost small" id="vingallery" onclick="document.getElementById('vinphoto').click()">🖼 Фото из галереи</button>
+      <button type="button" class="ghost small" id="vinphotobtn" onclick="document.getElementById('vincam').click()"><svg class="ic" aria-hidden="true"><use href="#i-camera"/></svg>Сфотографировать СТС или ПТС</button>
+      <button type="button" class="ghost small" id="vingallery" onclick="document.getElementById('vinphoto').click()"><svg class="ic" aria-hidden="true"><use href="#i-image"/></svg>Фото из галереи</button>
       <input type="file" id="vincam" accept="image/*" capture="environment" hidden>
       <input type="file" id="vinphoto" accept="image/*" hidden>
       <span class="hint">Наведите камеру на строку с VIN. Фото не отправляется в интернет, текст распознаётся прямо на телефоне.</span>
@@ -573,7 +591,7 @@ input[type=file]::file-selector-button{font:600 .9rem var(--body);color:var(--fg
       <div><label for="city">Город (для цен)</label><input id="city" placeholder="Москва"></div>
     </div>
     <div class="codeinfo" id="codeinfo" hidden></div>
-    <div class="hint obdad">🔌 Нет сканера, чтобы считать коды? Адаптер ELM327 стоит 500–1 500 ₽ и работает с телефоном:
+    <div class="hint obdad"><svg class="ic" aria-hidden="true"><use href="#i-plug"/></svg>Нет сканера, чтобы считать коды? Адаптер ELM327 стоит 500–1 500 ₽ и работает с телефоном:
       <a id="obd-ozon" href="#" target="_blank" rel="noopener sponsored">Ozon</a> ·
       <a id="obd-wb" href="#" target="_blank" rel="noopener sponsored">Wildberries</a></div>
     <div data-ai><label for="photos">Фото проблемы, до 3 (потёк, лампа на панели, деталь)</label>
@@ -630,7 +648,7 @@ input[type=file]::file-selector-button{font:600 .9rem var(--body);color:var(--fg
     </div>
     <div class="hint" id="partcar"></div>
     <div class="actions">
-      <button type="button" class="primary" id="partgeo">📍 Магазины рядом со мной</button>
+      <button type="button" class="primary" id="partgeo"><svg class="ic" aria-hidden="true"><use href="#i-pin"/></svg>Магазины рядом со мной</button>
       <button type="button" class="ghost" id="partcitygo">Искать по городу</button>
     </div>
     <div class="status" id="partstatus"></div>
@@ -644,7 +662,7 @@ input[type=file]::file-selector-button{font:600 .9rem var(--body);color:var(--fg
     <div><label>Какое топливо нужно</label><div class="chips" id="fueltypes"></div></div>
     <div><label for="fuelcity">Где искать</label><input id="fuelcity" autocomplete="off" placeholder="Город или адрес, например: Казань"></div>
     <div class="actions">
-      <button type="button" class="primary" id="fuelgeo">⛽ Заправки рядом со мной</button>
+      <button type="button" class="primary" id="fuelgeo"><svg class="ic" aria-hidden="true"><use href="#i-fuel"/></svg>Заправки рядом со мной</button>
       <button type="button" class="ghost" id="fuelcitygo">Искать по городу</button>
     </div>
     <div class="status" id="fuelstatus"></div>
@@ -654,6 +672,7 @@ input[type=file]::file-selector-button{font:600 .9rem var(--body);color:var(--fg
 </div>
 
 <script>
+const ic = n => `<svg class="ic" aria-hidden="true"><use href="#i-${n}"/></svg>`;
 const $ = id => document.getElementById(id);
 const store = { get(k){try{return localStorage.getItem(k)||""}catch(e){return ""}}, set(k,v){try{localStorage.setItem(k,v)}catch(e){}} };
 $("apikey").value = store.get("yt_key");
@@ -823,8 +842,8 @@ function renderOsagoAlerts(){
   $("osagoalerts").innerHTML = cars.map((c, i) => ({c, i, d: osagoDays(c.osago)}))
     .filter(x => x.d !== null && x.d <= OSAGO_SOON_DAYS)
     .map(({c, i, d}) => `<div class="osagoal${d < 0 ? " late" : ""}">
-      <div>${d < 0 ? `⚠️ У <b>${esc(carName(c))}</b> ОСАГО закончилось ${esc(ruDate(c.osago))}. Ездить без полиса нельзя, штраф 800 ₽.`
-        : `🛡 У <b>${esc(carName(c))}</b> ОСАГО заканчивается ${esc(ruDate(c.osago))}, ${d === 0 ? "сегодня" : `через ${d} ${dayWord(d)}`}.`}</div>
+      <div>${d < 0 ? `${ic("alert")}У <b>${esc(carName(c))}</b> ОСАГО закончилось ${esc(ruDate(c.osago))}. Ездить без полиса нельзя, штраф 800 ₽.`
+        : `${ic("shield")}У <b>${esc(carName(c))}</b> ОСАГО заканчивается ${esc(ruDate(c.osago))}, ${d === 0 ? "сегодня" : `через ${d} ${dayWord(d)}`}.`}</div>
       <div class="actions"><a class="primary small" href="${OSAGO_URL}" target="_blank" rel="noopener sponsored">Сравните цены ОСАГО</a>
         <button type="button" class="ghost small" data-osagonew="${i}">Я продлил полис</button></div></div>`).join("");
 }
@@ -1003,7 +1022,7 @@ async function findByPlate(){
     if (d.dtp === null) li.push("ДТП: не удалось проверить");
     else if (!d.dtp.length) li.push("ДТП: не найдено");
     else li.push(`ДТП: ${d.dtp.length} — ` + d.dtp.map(x => esc([x.date, x.type, x.damage].filter(Boolean).join(", "))).join("; "));
-    if (d.wanted !== null && d.wanted !== undefined) li.push(d.wanted ? "<b style=\"color:var(--warn)\">⚠ Машина в розыске</b>" : "Розыск: нет");
+    if (d.wanted !== null && d.wanted !== undefined) li.push(d.wanted ? "<b style=\"color:var(--warn)\">" + ic("alert") + "Машина в розыске</b>" : "Розыск: нет");
     if (d.restrictions === null) li.push("Ограничения: не удалось проверить");
     else if (!d.restrictions.length) li.push("Ограничения на регистрацию: нет");
     else li.push(`<span style="color:var(--warn)">Ограничения: ${d.restrictions.length}</span> — ` + d.restrictions.map(x => esc([x.type, x.date && "с " + x.date, x.who].filter(Boolean).join(", "))).join("; "));
@@ -1516,8 +1535,8 @@ function esc(s){ const d = document.createElement("div"); d.textContent = s || "
   const render = (lat, lon) => {
     geo = lat != null ? [lat, lon] : [];
     const make = $("make").value.trim();
-    links.innerHTML = [["🚚 Эвакуатор", "эвакуатор"], ["🔧 Автосервис", "автосервис"]]
-      .concat(make ? [[`🔧 Сервис ${esc(make)}`, "автосервис " + make]] : [])
+    links.innerHTML = [[ic("truck") + "Эвакуатор", "эвакуатор"], [ic("wrench") + "Автосервис", "автосервис"]]
+      .concat(make ? [[`${ic("wrench")}Сервис ${esc(make)}`, "автосервис " + make]] : [])
       .map(([title, q]) => `<div class="towgroup"><b>${title}</b><div class="towlinks">${mapLinks(q, lat, lon)}</div></div>`).join("");
   };
   const mapLinks = (q, lat, lon) => {
@@ -1626,10 +1645,10 @@ async function osmGeocode(place){
     const byNum = a
       ? [link(`https://www.exist.ru/Price/?pcode=${enc(ac)}`, "Exist"), link(`https://emex.ru/products/${enc(ac)}`, "Emex"), link(`https://www.zzap.ru/public/search.aspx#rawdata=${enc(ac)}`, "ZZap")]
       : [];
-    linksEl.innerHTML = `<div class="towgroup"><b>💰 Цены в интернете</b><div class="towlinks">${price.join("")}</div></div>
-      ${a ? `<div class="towgroup"><b>🔩 По номеру детали ${esc(a)}</b><div class="towlinks">${byNum.join("")}</div></div>`
+    linksEl.innerHTML = `<div class="towgroup"><b>${ic("ruble")}Цены в интернете</b><div class="towlinks">${price.join("")}</div></div>
+      ${a ? `<div class="towgroup"><b>${ic("nut")}По номеру детали ${esc(a)}</b><div class="towlinks">${byNum.join("")}</div></div>`
           : `<div class="hint">Знаете номер детали? Впишите его, и появятся Exist, Emex и ZZap с ценами сразу от многих продавцов. Не знаете: ${link(`https://yandex.ru/search/?text=${enc("номер детали артикул " + [p, c, yr].filter(Boolean).join(" "))}`, "найти номер")}</div>`}
-      <div class="towgroup"><b>🗺 Все магазины на картах${here ? " рядом с вами" : ""}</b><div class="towlinks">${mapLinks.join("")}</div></div>`;
+      <div class="towgroup"><b>${ic("map")}Все магазины на картах${here ? " рядом с вами" : ""}</b><div class="towlinks">${mapLinks.join("")}</div></div>`;
   }
 
   function overpass(lat, lon, r){
@@ -1645,9 +1664,9 @@ async function osmGeocode(place){
       const tel = phone.split(/[;,]/)[0].replace(/[^\d+]/g, "");
       const a = osmAddr(t);
       return `<div class="shop"><h3><span>${esc(name)}</span><small>${osmKm(s.d)}</small></h3>
-        ${a ? `<p>📍 ${esc(a)}</p>` : `<p>📍 адрес не указан, смотрите на карте</p>`}
-        ${t.opening_hours ? `<p>🕘 ${esc(osmHours(t.opening_hours))}</p>` : ""}
-        ${phone ? `<p>☎ ${esc(phone.split(/[;,]/)[0])}</p>` : ""}
+        ${a ? `<p>${ic("pin")}${esc(a)}</p>` : `<p>${ic("pin")}адрес не указан, смотрите на карте</p>`}
+        ${t.opening_hours ? `<p>${ic("clock")}${esc(osmHours(t.opening_hours))}</p>` : ""}
+        ${phone ? `<p>${ic("phone")}${esc(phone.split(/[;,]/)[0])}</p>` : ""}
         <div class="towlinks">${link(`https://yandex.ru/maps/?rtext=${here[0]},${here[1]}~${s.lat},${s.lon}&rtt=auto`, "Маршрут")}
           ${tel ? `<a href="tel:${esc(tel)}">Узнать цену</a>` : link(`https://2gis.ru/search/${enc(name)}?m=${s.lon},${s.lat}/17`, "В 2ГИС")}
           ${site ? link(esc(/^https?:/i.test(site) ? site : "https://" + site), "Сайт") : link(`https://yandex.ru/maps/?text=${enc(name)}&ll=${s.lon},${s.lat}&z=17`, "Отзывы")}</div></div>`;
@@ -1729,7 +1748,7 @@ async function osmGeocode(place){
     const maps = here
       ? [link(`https://yandex.ru/maps/?text=${encodeURIComponent(q)}&ll=${here[1]},${here[0]}&z=13`, "Яндекс Карты"), link(`https://2gis.ru/search/${encodeURIComponent(q)}?m=${here[1]},${here[0]}/13`, "2ГИС"), link(`https://www.google.com/maps/search/${encodeURIComponent(q)}/@${here[0]},${here[1]},13z`, "Google")]
       : [link(`https://yandex.ru/maps/?text=${encodeURIComponent(q + where)}`, "Яндекс Карты"), link(`https://2gis.ru/search/${encodeURIComponent(q + where)}`, "2ГИС"), link(`https://www.google.com/maps/search/${encodeURIComponent(q + where)}`, "Google")];
-    linksEl.innerHTML = `<div class="towgroup"><b>🗺 Цены на топливо и все АЗС на картах</b><div class="towlinks">${maps.join("")}</div></div>
+    linksEl.innerHTML = `<div class="towgroup"><b>${ic("map")}Цены на топливо и все АЗС на картах</b><div class="towlinks">${maps.join("")}</div></div>
       <div class="hint">В Яндекс Картах и 2ГИС у заправок видны цены и свежие отзывы водителей, там же часто пишут, если топливо закончилось.</div>`;
   }
 
@@ -1744,10 +1763,10 @@ async function osmGeocode(place){
       const mine = has(t, want);
       return `<div class="shop"><h3><span>${esc(name + brand)}</span><small>${osmKm(s.d)}</small></h3>
         ${fuels ? `<div class="fuels">${fuels}</div>` : ""}
-        ${!mine ? `<p>⛽ ${esc(label(want))}: нет данных, уточните на месте или по телефону</p>` : ""}
-        <p>📍 ${esc(a || "адрес не указан, смотрите на карте")}</p>
-        ${t.opening_hours ? `<p>🕘 ${esc(osmHours(t.opening_hours))}</p>` : ""}
-        ${phone ? `<p>☎ ${esc(phone)}</p>` : ""}
+        ${!mine ? `<p>${ic("fuel")}${esc(label(want))}: нет данных, уточните на месте или по телефону</p>` : ""}
+        <p>${ic("pin")}${esc(a || "адрес не указан, смотрите на карте")}</p>
+        ${t.opening_hours ? `<p>${ic("clock")}${esc(osmHours(t.opening_hours))}</p>` : ""}
+        ${phone ? `<p>${ic("phone")}${esc(phone)}</p>` : ""}
         <div class="towlinks">${link(`https://yandex.ru/maps/?rtext=${here[0]},${here[1]}~${s.lat},${s.lon}&rtt=auto`, "Маршрут")}
           ${tel ? `<a href="tel:${esc(tel)}">Позвонить</a>` : link(`https://2gis.ru/search/${encodeURIComponent(name)}?m=${s.lon},${s.lat}/17`, "В 2ГИС")}
           ${link(`https://yandex.ru/maps/?text=${encodeURIComponent(name)}&ll=${s.lon},${s.lat}&z=17`, "Цены")}</div></div>`;
