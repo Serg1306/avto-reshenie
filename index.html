@@ -320,6 +320,87 @@ input[type=file]::file-selector-button{font:600 .9rem var(--body);color:var(--fg
  @keyframes runup{to{transform:translateY(-50%)}}
 }
 @media (prefers-reduced-motion:reduce){.codes-run{animation:none}}
+
+/* ===== Объёмные стеклянные кнопки с цветной подсветкой снизу ===== */
+/* Каждая кнопка — тёмная глянцевая «капсула»: блик сверху, цветной ободок снизу и неоновое свечение под ней.
+   Цвет свечения задаётся переменной --gc (R,G,B). */
+.wrap .primary,.wrap .ghost,.wrap .sos,.wrap .towlinks a,.wrap .chip.btn,#hero .srv a{
+  --gc:95,208,255;position:relative;isolation:isolate;overflow:hidden;
+  color:#fff;font:700 .95rem/1.2 var(--body);letter-spacing:.01em;text-transform:none;text-shadow:0 1px 2px rgba(0,0,0,.65);
+  border-radius:999px;border:1px solid rgba(255,255,255,.2);
+  background:
+    radial-gradient(130% 100% at 50% 135%,rgba(var(--gc),.62),rgba(var(--gc),0) 62%),
+    linear-gradient(180deg,#1b2336 0%,#0b0f1a 55%,#06080e 100%);
+  box-shadow:
+    inset 0 1px 0 rgba(255,255,255,.5),
+    inset 0 -1px 0 rgba(var(--gc),.95),
+    inset 0 -10px 18px -10px rgba(var(--gc),.9),
+    0 0 0 1px rgba(0,0,0,.55),
+    0 6px 12px -4px rgba(0,0,0,.75),
+    0 12px 22px -8px rgba(var(--gc),.8),
+    0 22px 46px -14px rgba(var(--gc),.65);
+  transition:transform .16s var(--ease-out),box-shadow .25s ease,filter .25s ease}
+/* глянцевый блик в верхней половине */
+.wrap .primary::before,.wrap .ghost::before,.wrap .sos::before,.wrap .towlinks a::before,.wrap .chip.btn::before,#hero .srv a::before{
+  content:"";position:absolute;z-index:-1;left:6%;right:6%;top:2px;height:48%;border-radius:999px 999px 40% 40%/999px 999px 100% 100%;pointer-events:none;
+  background:linear-gradient(180deg,rgba(255,255,255,.34),rgba(255,255,255,.06) 70%,rgba(255,255,255,0))}
+/* главные кнопки — ярче и с цветным стеклом */
+.wrap .primary{--gc:70,175,255;padding:15px 26px;font-size:1rem;
+  background:
+    radial-gradient(130% 110% at 50% 135%,rgba(var(--gc),.85),rgba(var(--gc),0) 65%),
+    linear-gradient(180deg,#1f4f8f 0%,#0c2347 55%,#071530 100%)}
+.wrap .ghost{padding:12px 20px}
+.wrap .ghost.small,.wrap .primary.small{padding:10px 16px;font-size:.88rem}
+/* свои цвета подсветки, как в образце */
+#platego{--gc:130,110,255}
+#decode{--gc:185,95,255}
+#vinphotobtn{--gc:255,150,60}
+#vingallery{--gc:255,95,175}
+#savecar{--gc:60,225,135}
+.wrap .more{--gc:185,95,255}
+.wrap .sos{--gc:255,75,60;padding:11px 18px;
+  background:radial-gradient(130% 110% at 50% 135%,rgba(var(--gc),.9),rgba(var(--gc),0) 65%),linear-gradient(180deg,#5a1a1e 0%,#2a0a0e 60%,#17060a 100%)}
+.wrap .towlinks a{border-radius:999px;padding:11px 8px}
+.wrap .towlinks a:nth-child(3n+2){--gc:60,225,135}
+.wrap .towlinks a:nth-child(3n){--gc:255,170,60}
+.wrap .chip.btn{--gc:255,190,90;padding:7px 16px;border-radius:999px;font-size:.88rem}
+.wrap .chip.btn.sel{--gc:95,208,255;border-color:rgba(160,230,255,.6)}
+.wrap .chip.btn .x{position:relative;color:rgba(255,255,255,.7)}
+/* карточки услуг на первом экране — стеклянные плитки с подсветкой */
+#hero .srv a{border-radius:18px;font:inherit;text-shadow:none;padding:12px 13px;
+  background:radial-gradient(120% 90% at 50% 130%,rgba(var(--gc),.5),rgba(var(--gc),0) 60%),linear-gradient(180deg,rgba(30,38,58,.92),rgba(7,10,18,.95))}
+#hero .srv a::before{border-radius:16px 16px 50% 50%/16px 16px 30% 30%;height:42%;left:3%;right:3%;opacity:.7}
+#hero .srv li:nth-child(6n+2) a{--gc:185,95,255}
+#hero .srv li:nth-child(6n+3) a{--gc:60,225,135}
+#hero .srv li:nth-child(6n+4) a{--gc:255,150,60}
+#hero .srv li:nth-child(6n+5) a{--gc:255,80,90}
+#hero .srv li:nth-child(6n+6) a{--gc:70,140,255}
+#hero .srv em{color:rgb(var(--gc))}
+/* нажатие: кнопка «утапливается», свечение прижимается */
+.wrap .primary:active:not(:disabled),.wrap .ghost:active:not(:disabled),.wrap .sos:active,.wrap .towlinks a:active,.wrap .chip.btn:active,#hero .srv a:active{
+  transform:translateY(1px) scale(.97);filter:brightness(1.12);
+  box-shadow:inset 0 1px 0 rgba(255,255,255,.35),inset 0 -1px 0 rgba(var(--gc),1),inset 0 -12px 20px -10px rgba(var(--gc),1),0 0 0 1px rgba(0,0,0,.55),0 4px 8px -4px rgba(0,0,0,.8),0 8px 18px -6px rgba(var(--gc),.95)}
+.wrap .primary:focus-visible,.wrap .ghost:focus-visible,.wrap .sos:focus-visible,.wrap .towlinks a:focus-visible,.wrap .chip.btn:focus-visible,#hero .srv a:focus-visible{outline:2px solid rgb(var(--gc));outline-offset:3px}
+.wrap button:disabled{filter:saturate(.4) brightness(.8)}
+@media (hover:hover) and (pointer:fine){
+  .wrap .primary:hover,.wrap .ghost:hover,.wrap .sos:hover,.wrap .towlinks a:hover,.wrap .chip.btn:hover,#hero .srv a:hover{
+    filter:brightness(1.15);border-color:rgba(255,255,255,.32);
+    box-shadow:inset 0 1px 0 rgba(255,255,255,.6),inset 0 -1px 0 rgba(var(--gc),1),inset 0 -12px 20px -10px rgba(var(--gc),1),0 0 0 1px rgba(0,0,0,.55),0 6px 12px -4px rgba(0,0,0,.75),0 14px 26px -8px rgba(var(--gc),.95),0 26px 56px -12px rgba(var(--gc),.8)}
+}
+/* поля ввода — утопленное стекло; при вводе светятся снизу */
+.wrap input:not([type=file]),.wrap select{border-radius:999px;padding:13px 20px}
+.wrap textarea{border-radius:22px;padding:14px 18px}
+.wrap input,.wrap textarea,.wrap select{--gc:95,208,255;border:1px solid rgba(255,255,255,.16);
+  background-color:rgba(4,7,14,.82);
+  box-shadow:inset 0 2px 8px rgba(0,0,0,.7),inset 0 -1px 0 rgba(255,255,255,.07),0 1px 0 rgba(255,255,255,.06),0 10px 22px -12px rgba(var(--gc),.35)}
+.wrap select{padding-right:42px;background-position:calc(100% - 24px) 50%,calc(100% - 18px) 50%}
+.wrap input:focus,.wrap textarea:focus,.wrap select:focus{border-color:rgba(var(--gc),.75);
+  box-shadow:inset 0 2px 8px rgba(0,0,0,.7),inset 0 -1px 0 rgba(var(--gc),.6),0 0 0 1px rgba(var(--gc),.35),0 12px 26px -8px rgba(var(--gc),.75)}
+.wrap input[type=file]{border-radius:22px}
+.wrap input[type=file]::file-selector-button{border-radius:999px;color:#fff;border:1px solid rgba(255,255,255,.2);
+  background:linear-gradient(180deg,rgba(255,255,255,.18),rgba(255,255,255,0) 50%),radial-gradient(130% 100% at 50% 135%,rgba(95,208,255,.6),transparent 62%),#0b0f1a;
+  box-shadow:inset 0 1px 0 rgba(255,255,255,.45),inset 0 -1px 0 rgba(95,208,255,.9),0 8px 18px -8px rgba(95,208,255,.8)}
+@media (prefers-reduced-motion:reduce){.wrap .primary,.wrap .ghost,.wrap .sos,.wrap .towlinks a,.wrap .chip.btn,#hero .srv a{transition:none}}
 </style>
 </head>
 <body>
