@@ -454,8 +454,13 @@ input[type=file]::file-selector-button{font:600 .9rem var(--body);color:var(--fg
   box-shadow:inset 0 3px 8px rgba(0,0,0,.8),0 0 0 1px rgba(var(--gc),.5),0 14px 30px -8px rgba(var(--gc),.85)}
 .wrap #osago{--gc:255,190,90}
 .wrap textarea{min-height:110px}
-.sitefoot{max-width:1100px;margin:40px auto 0;padding:22px 16px calc(28px + env(safe-area-inset-bottom));border-top:1px solid rgba(255,255,255,.1);color:var(--muted);font-size:.85rem;line-height:1.6;position:relative;z-index:2}
-.sitefoot .co{color:var(--fg);font-weight:600}.sitefoot .links{display:flex;flex-wrap:wrap;gap:6px 16px;margin-top:8px}.sitefoot a{color:var(--muted)}.sitefoot a:hover{color:var(--fg)}
+.sitefoot{max-width:1100px;margin:48px auto 0;padding:28px 16px calc(28px + env(safe-area-inset-bottom));border-top:1px solid rgba(255,255,255,.1);background:linear-gradient(180deg,rgba(15,29,58,.55),rgba(6,13,31,.9));display:grid;grid-template-columns:1fr 1fr;gap:26px 20px;position:relative;z-index:2}
+.sitefoot h3{font-size:1.15rem;margin:0 0 12px;color:var(--fg)}
+.sitefoot .fcol{display:flex;flex-direction:column;gap:12px}.sitefoot .fwide{grid-column:1/-1}
+.sitefoot .fcol a{color:#c3cfe8;text-decoration:none;font-size:1rem;line-height:1.35}.sitefoot .fcol a:hover{color:var(--fg)}
+.sitefoot .fnote{grid-column:1/-1;margin:8px 0 0;color:var(--fg);font-size:1.05rem;line-height:1.45}
+.sitefoot .fcopy{grid-column:1/-1;margin:0;color:var(--muted);font-size:.88rem;line-height:1.6}.sitefoot .fcopy a{color:var(--muted)}
+@media(min-width:760px){.sitefoot{grid-template-columns:1.4fr 1fr 1fr}.sitefoot .fwide{grid-column:auto}}
 .co-todo{color:#ffb35c;font-style:italic}
 </style>
 </head>
@@ -657,16 +662,29 @@ input[type=file]::file-selector-button{font:600 .9rem var(--body);color:var(--fg
 </div>
 
 <footer class="sitefoot">
-  <div class="co" data-co="name"></div>
-  <div>ИНН <span data-co="inn"></span> · ОГРН <span data-co="ogrn"></span></div>
-  <div>Адрес: <span data-co="addr"></span></div>
-  <div>Email: <span data-co="email"></span></div>
-  <nav class="links">
-    <a href="legal/oferta.html">Публичная оферта</a>
+  <div class="fcol fwide">
+    <h3>Правовая информация</h3>
+    <a href="legal/oferta.html">Оферта, оплата и возврат</a>
+    <a href="legal/terms.html">Пользовательское соглашение</a>
     <a href="legal/privacy.html">Политика конфиденциальности</a>
     <a href="legal/soglasie.html">Согласие на обработку данных</a>
-  </nav>
-  <div style="margin-top:8px">Сведения сервиса носят справочный характер и не заменяют диагностику в автосервисе.</div>
+  </div>
+  <div class="fcol">
+    <h3>Сервис</h3>
+    <a href="#form">VIN и госномер</a>
+    <a href="#codes">Коды ошибок</a>
+    <a href="#garage">Мой гараж</a>
+    <a href="#parts">Запчасти рядом</a>
+    <a href="#fuel">Заправки рядом</a>
+  </div>
+  <div class="fcol">
+    <h3>Помощь</h3>
+    <a href="#tow">Эвакуатор и автосервис</a>
+    <a href="tel:112">Экстренный вызов 112</a>
+    <a data-co-mail href="mailto:b1.u@bk.ru">Написать нам</a>
+  </div>
+  <p class="fnote">Сведения носят справочный характер и не заменяют диагностику в автосервисе.</p>
+  <p class="fcopy">© 2026 АвтоРешение · <span data-co="name"></span>, ОГРН <span data-co="ogrn"></span>, ИНН <span data-co="inn"></span>, <span data-co="email"></span></p>
 </footer>
 <script src="legal/company.js"></script>
 
